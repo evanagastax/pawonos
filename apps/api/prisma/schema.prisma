@@ -1,0 +1,840 @@
+// PawonOS Database Schema
+// Food Production ERP for Catering Businesses
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION & AUTHORIZATION
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  permissions Json         @default("{}")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  users       User[]
+
+  @@map("roles")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ============================================
+// MASTER DATA
+// ============================================
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ingredients Ingredient[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model IngredientCategory {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  ingredients Ingredient[]
+
+  @@map("ingredient_categories")
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  name      String   @unique // Kg, Gram, Liter, Ml, Piece, Pack, Box
+  symbol    String   @unique // kg, g, l, ml, pcs, pack, box
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ingredients Ingredient[]
+  packaging   Packaging[]
+  recipeItems RecipeItem[]
+
+  @@map("units")
+}
+
+model Ingredient {
+  id             String   @id @default(cuid())
+  name           String
+  sku            String?  @unique
+  categoryId     String
+  unitId         String
+  purchasePrice  Float    @default(0)
+  minimumStock   Float    @default(0)
+  currentStock   Float    @default(0)
+  averageCost    Float    @default(0)
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category       IngredientCategory @relation(fields: [categoryId], references: [id])
+  unit           Unit               @relation(fields: [unitId], references: [id])
+  supplier       Supplier?          @relation(fields: [supplierId], references: [id])
+  supplierId     String?
+
+  recipeItems    RecipeItem[]
+  alternatives   IngredientAlternative[] @relation("IngredientAlternatives")
+  alternativeFor IngredientAlternative[] @relation("AlternativeFor")
+  inventory      Inventory?
+  transactions   InventoryTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([categoryId])
+  @@index([supplierId])
+  @@map("ingredients")
+}
+
+model IngredientAlternative {
+  id              String   @id @default(cuid())
+  ingredientId    String
+  alternativeId   String
+  conversionRate  Float    @default(1) // How much alternative equals 1 unit of original
+  costDifference  Float    @default(0)
+  qualityRating   Int      @default(5) // 1-10
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  ingredient      Ingredient @relation("IngredientAlternatives", fields: [ingredientId], references: [id])
+  alternative     Ingredient @relation("AlternativeFor", fields: [alternativeId], references: [id])
+
+  @@unique([ingredientId, alternativeId])
+  @@map("ingredient_alternatives")
+}
+
+model Packaging {
+  id             String   @id @default(cuid())
+  name           String
+  sku            String?  @unique
+  unitId         String
+  purchasePrice  Float    @default(0)
+  minimumStock   Float    @default(0)
+  currentStock   Float    @default(0)
+  averageCost    Float    @default(0)
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  unit           Unit     @relation(fields: [unitId], references: [id])
+  inventory      Inventory?
+  transactions   InventoryTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
+  recipeItems    RecipeItem[]
+
+  @@map("packaging")
+}
+
+// ============================================
+// RECIPES & MENU
+// ============================================
+
+model Recipe {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  currentVersion Int     @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  versions      RecipeVersion[]
+  menuItems     MenuItem[]
+
+  @@map("recipes")
+}
+
+model RecipeVersion {
+  id              String   @id @default(cuid())
+  recipeId        String
+  version         Int
+  yield           Int      @default(1) // How many servings
+  prepTime        Int?     // Minutes
+  cookTime        Int?     // Minutes
+  instructions    String?
+  notes           String?
+  materialCost    Float    @default(0)
+  packagingCost   Float    @default(0)
+  laborCost       Float    @default(0)
+  utilityCost     Float    @default(0)
+  overheadCost    Float    @default(0)
+  totalCost       Float    @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  recipe          Recipe   @relation(fields: [recipeId], references: [id])
+  items           RecipeItem[]
+  steps           RecipeStep[]
+  menuItems       MenuItem[]
+  productionBatchItems ProductionBatchItem[]
+
+  @@unique([recipeId, version])
+  @@map("recipe_versions")
+}
+
+model RecipeItem {
+  id              String   @id @default(cuid())
+  recipeVersionId String
+  ingredientId    String?
+  packagingId     String?
+  quantity        Float
+  unitId          String
+  notes           String?
+
+  recipeVersion   RecipeVersion @relation(fields: [recipeVersionId], references: [id])
+  ingredient      Ingredient?   @relation(fields: [ingredientId], references: [id])
+  packaging       Packaging?    @relation(fields: [packagingId], references: [id])
+  unit            Unit          @relation(fields: [unitId], references: [id])
+
+  @@map("recipe_items")
+}
+
+model RecipeStep {
+  id              String   @id @default(cuid())
+  recipeVersionId String
+  stepNumber      Int
+  instruction     String
+  duration        Int?     // Minutes
+  notes           String?
+
+  recipeVersion   RecipeVersion @relation(fields: [recipeVersionId], references: [id])
+
+  @@unique([recipeVersionId, stepNumber])
+  @@map("recipe_steps")
+}
+
+model MenuItem {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  recipeId        String
+  recipeVersionId String
+  sellingPrice    Float    @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  recipe          Recipe         @relation(fields: [recipeId], references: [id])
+  recipeVersion   RecipeVersion  @relation(fields: [recipeVersionId], references: [id])
+  mealTemplateItems MealTemplateItem[]
+  orderItems      OrderItem[]
+  priceHistory    PriceHistory[]
+
+  @@map("menu_items")
+}
+
+// ============================================
+// MEAL PLANNING
+// ============================================
+
+model MealTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       MealTemplateItem[]
+  calendar    MealCalendar[]
+  orders      Order[]
+
+  @@map("meal_templates")
+}
+
+model MealTemplateItem {
+  id              String   @id @default(cuid())
+  mealTemplateId  String
+  menuItemId      String
+  quantity        Int      @default(1)
+  notes           String?
+
+  mealTemplate    MealTemplate @relation(fields: [mealTemplateId], references: [id])
+  menuItem        MenuItem     @relation(fields: [menuItemId], references: [id])
+
+  @@map("meal_template_items")
+}
+
+model MealCalendar {
+  id              String   @id @default(cuid())
+  date            DateTime @unique
+  mealTemplateId  String
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  mealTemplate    MealTemplate @relation(fields: [mealTemplateId], references: [id])
+
+  @@map("meal_calendar")
+}
+
+// ============================================
+// CUSTOMERS & ORDERS
+// ============================================
+
+model Customer {
+  id          String   @id @default(cuid())
+  name        String
+  company     String?
+  picName     String?
+  email       String?
+  phone       String?
+  address     String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  customerId      String
+  mealTemplateId  String
+  quantity        Int
+  deliveryDate    DateTime
+  deliveryTime    String?
+  deliveryAddress String?
+  specialNotes    String?
+  sellingPrice    Float
+  deposit         Float    @default(0)
+  paymentStatus   PaymentStatus @default(PENDING)
+  status          OrderStatus @default(DRAFT)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  mealTemplate    MealTemplate  @relation(fields: [mealTemplateId], references: [id])
+  items           OrderItem[]
+  productionBatches ProductionBatch[]
+  delivery        Delivery?
+  payments        Payment[]
+  reservations    InventoryReservation[]
+  invoices        Invoice[]
+
+  @@index([customerId])
+  @@index([deliveryDate])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  menuItemId  String
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  notes       String?
+
+  order       Order     @relation(fields: [orderId], references: [id])
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  PREPARING
+  COOKING
+  PACKAGING
+  READY
+  DELIVERING
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+  REFUNDED
+}
+
+// ============================================
+// PRODUCTION
+// ============================================
+
+model ProductionBatch {
+  id              String   @id @default(cuid())
+  batchNumber     String   @unique
+  orderId         String
+  status          ProductionStatus @default(PENDING)
+  scheduledDate   DateTime
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id])
+  items           ProductionBatchItem[]
+  logs            ProductionLog[]
+  hppSnapshot     HppSnapshot?
+
+  @@index([orderId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("production_batches")
+}
+
+model ProductionBatchItem {
+  id                  String   @id @default(cuid())
+  productionBatchId   String
+  recipeVersionId     String
+  quantity            Float
+  materialCost        Float    @default(0)
+  packagingCost       Float    @default(0)
+  laborCost           Float    @default(0)
+  utilityCost         Float    @default(0)
+  overheadCost        Float    @default(0)
+  totalCost           Float    @default(0)
+
+  productionBatch     ProductionBatch @relation(fields: [productionBatchId], references: [id])
+  recipeVersion       RecipeVersion   @relation(fields: [recipeVersionId], references: [id])
+
+  @@map("production_batch_items")
+}
+
+model ProductionLog {
+  id              String   @id @default(cuid())
+  productionBatchId String
+  action          String
+  details         Json?
+  createdAt       DateTime @default(now())
+
+  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id])
+
+  @@map("production_logs")
+}
+
+enum ProductionStatus {
+  PENDING
+  PREPARING
+  COOKING
+  PACKAGING
+  READY
+  COMPLETED
+}
+
+// ============================================
+// INVENTORY
+// ============================================
+
+model Inventory {
+  id              String   @id @default(cuid())
+  ingredientId    String?  @unique
+  packagingId     String?  @unique
+  currentStock    Float    @default(0)
+  reservedStock   Float    @default(0)
+  incomingStock   Float    @default(0)
+  averageCost     Float    @default(0)
+  lastRestockDate DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ingredient      Ingredient? @relation(fields: [ingredientId], references: [id])
+  packaging       Packaging?  @relation(fields: [packagingId], references: [id])
+  transactions    InventoryTransaction[]
+  reservations    InventoryReservation[]
+
+  @@map("inventory")
+}
+
+model InventoryTransaction {
+  id              String   @id @default(cuid())
+  inventoryId     String
+  type            TransactionType
+  quantity        Float
+  unitCost        Float
+  totalCost       Float
+  referenceType   String?  // order, purchase, adjustment, etc.
+  referenceId     String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+  ingredient      Ingredient? @relation(fields: [ingredientId], references: [id])
+  ingredientId    String?
+  packaging       Packaging? @relation(fields: [packagingId], references: [id])
+  packagingId     String?
+
+  @@index([inventoryId])
+  @@index([type])
+  @@index([referenceType, referenceId])
+  @@map("inventory_transactions")
+}
+
+model InventoryReservation {
+  id              String   @id @default(cuid())
+  inventoryId     String
+  orderId         String
+  quantity        Float
+  status          ReservationStatus @default(ACTIVE)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+  order           Order     @relation(fields: [orderId], references: [id])
+
+  @@map("inventory_reservations")
+}
+
+enum TransactionType {
+  PURCHASE
+  RESERVATION
+  CONSUMPTION
+  ADJUSTMENT
+  WASTE
+  RETURN
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
+}
+
+// ============================================
+// PURCHASING
+// ============================================
+
+model PurchaseOrder {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  supplierId      String
+  status          PurchaseStatus @default(DRAFT)
+  orderDate       DateTime @default(now())
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  totalAmount     Float    @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  items           PurchaseOrderItem[]
+  goodsReceipts   GoodsReceipt[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  ingredientId    String?
+  packagingId     String?
+  quantity        Float
+  unitCost        Float
+  totalCost       Float
+  receivedQty     Float    @default(0)
+  notes           String?
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  ingredient      Ingredient?   @relation(fields: [ingredientId], references: [id])
+  packaging       Packaging?    @relation(fields: [packagingId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id              String   @id @default(cuid())
+  receiptNumber   String   @unique
+  purchaseOrderId String
+  receivedDate    DateTime @default(now())
+  receivedBy      String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+
+  @@map("goods_receipts")
+}
+
+enum PurchaseStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+// ============================================
+// DELIVERY
+// ============================================
+
+model Delivery {
+  id              String   @id @default(cuid())
+  orderId         String   @unique
+  driverId        String?
+  vehicleId       String?
+  status          DeliveryStatus @default(SCHEDULED)
+  scheduledDate   DateTime
+  scheduledTime   String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order     @relation(fields: [orderId], references: [id])
+
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("deliveries")
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+// ============================================
+// FINANCE & COSTING
+// ============================================
+
+model CostSettings {
+  id                  String   @id @default(cuid())
+  companyId           String   @unique
+  expectedMonthlyMeals Int     @default(0)
+  targetMargin        Float    @default(0.35)
+  targetFoodCost      Float    @default(0.35)
+  currency            String   @default("IDR")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("cost_settings")
+}
+
+model OverheadCategory {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  allocationMethod String  @default("per_meal") // per_meal, percentage, fixed
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  costs           OverheadCost[]
+
+  @@map("overhead_categories")
+}
+
+model OverheadCost {
+  id              String   @id @default(cuid())
+  categoryId      String
+  month           Int
+  year            Int
+  amount          Float
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  category        OverheadCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([categoryId, month, year])
+  @@map("overhead_costs")
+}
+
+model LaborRate {
+  id              String   @id @default(cuid())
+  role            String
+  dailyRate       Float
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("labor_rates")
+}
+
+model UtilityRate {
+  id              String   @id @default(cuid())
+  name            String
+  costPerDay      Float
+  effectiveDate   DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("utility_rates")
+}
+
+model HppSnapshot {
+  id                  String   @id @default(cuid())
+  productionBatchId   String   @unique
+  materialCost        Float
+  packagingCost       Float
+  laborCost           Float
+  utilityCost         Float
+  overheadCost        Float
+  totalCost           Float
+  foodCostPercentage  Float
+  grossMargin         Float
+  netMargin           Float
+  createdAt           DateTime @default(now())
+
+  productionBatch     ProductionBatch @relation(fields: [productionBatchId], references: [id])
+
+  @@map("hpp_snapshots")
+}
+
+model PricingRule {
+  id              String   @id @default(cuid())
+  name            String
+  targetMargin    Float
+  targetFoodCost  Float
+  roundingMethod  String   @default("nearest") // up, down, nearest
+  roundingValue   Float    @default(100)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("pricing_rules")
+}
+
+model PriceHistory {
+  id              String   @id @default(cuid())
+  menuItemId      String
+  oldPrice        Float
+  newPrice        Float
+  reason          String?
+  changedBy       String
+  createdAt       DateTime @default(now())
+
+  menuItem        MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("price_history")
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  categoryId      String
+  amount          Float
+  description     String?
+  date            DateTime
+  referenceType   String?
+  referenceId     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  category        ExpenseCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("expenses")
+}
+
+model ExpenseCategory {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  expenses        Expense[]
+
+  @@map("expense_categories")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  orderId         String
+  amount          Float
+  paymentMethod   String
+  paymentDate     DateTime @default(now())
+  reference       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  orderId         String
+  amount          Float
+  dueDate         DateTime
+  status          InvoiceStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  order           Order    @relation(fields: [orderId], references: [id])
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
