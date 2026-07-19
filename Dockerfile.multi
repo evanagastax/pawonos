@@ -1,0 +1,81 @@
+# PawonOS Multi-stage Dockerfile
+
+# Stage 1: Install dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
+COPY packages/database/package.json ./packages/database/
+COPY packages/types/package.json ./packages/types/
+COPY packages/validation/package.json ./packages/validation/
+COPY packages/utils/package.json ./packages/utils/
+
+# Install dependencies
+RUN npm ci --only=production && \
+    cd apps/web && npm ci && \
+    cd ../api && npm ci
+
+# Stage 2: Build API
+FROM node:20-alpine AS api-builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY . .
+
+WORKDIR /app/apps/api
+RUN npx prisma generate
+RUN npm run build
+
+# Stage 3: Build Web
+FROM node:20-alpine AS web-builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY . .
+
+WORKDIR /app/apps/web
+RUN npm run build
+
+# Stage 4: API Production
+FROM node:20-alpine AS api
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 api
+
+COPY --from=api-builder /app/apps/api/dist ./dist
+COPY --from=api-builder /app/apps/api/prisma ./prisma
+COPY --from=api-builder /app/node_modules ./node_modules
+COPY --from=api-builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=api-builder /app/apps/api/package.json ./
+
+USER api
+
+EXPOSE 4000
+
+CMD ["node", "dist/main"]
+
+# Stage 5: Web Production
+FROM node:20-alpine AS web
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+COPY --from=web-builder /app/apps/web/public ./public
+COPY --from=web-builder /app/apps/web/.next/standalone ./
+COPY --from=web-builder /app/apps/web/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server"]

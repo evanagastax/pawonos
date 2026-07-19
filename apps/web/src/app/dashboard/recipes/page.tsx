@@ -15,13 +15,21 @@ interface RecipeItem {
   unit: { symbol: string };
 }
 
+interface RecipeStep {
+  id: string;
+  stepNumber: number;
+  instruction: string;
+  duration: number | null;
+  notes: string | null;
+}
+
 interface RecipeVersion {
   id: string;
   version: number;
   yield: number;
   totalCost: number;
   items: RecipeItem[];
-  steps: any[];
+  steps: RecipeStep[];
 }
 
 interface Recipe {
@@ -43,8 +51,10 @@ export default function RecipesPage() {
   const [showForm, setShowForm] = useState(false);
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [showAddItem, setShowAddItem] = useState<string | null>(null);
+  const [showAddStep, setShowAddStep] = useState<string | null>(null);
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [itemData, setItemData] = useState({ ingredientId: "", packagingId: "", quantity: 0, unitId: "", type: "ingredient" });
+  const [stepData, setStepData] = useState({ stepNumber: 1, instruction: "", duration: 0, notes: "" });
 
   useEffect(() => { fetchRecipes(); fetchIngredients(); fetchPackaging(); fetchUnits(); }, []);
 
@@ -115,6 +125,22 @@ export default function RecipesPage() {
   const handleDeleteItem = async (recipeId: string, versionId: string, itemId: string) => {
     try {
       await api.delete(`/recipes/${recipeId}/versions/${versionId}/items/${itemId}`);
+      fetchRecipes();
+    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+  };
+
+  const handleAddStep = async (recipeId: string, versionId: string) => {
+    try {
+      await api.post(`/recipes/${recipeId}/versions/${versionId}/steps`, stepData);
+      setShowAddStep(null);
+      setStepData({ stepNumber: 1, instruction: "", duration: 0, notes: "" });
+      fetchRecipes();
+    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+  };
+
+  const handleDeleteStep = async (recipeId: string, versionId: string, stepId: string) => {
+    try {
+      await api.delete(`/recipes/${recipeId}/versions/${versionId}/steps/${stepId}`);
       fetchRecipes();
     } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
   };
@@ -254,6 +280,71 @@ export default function RecipesPage() {
                             </table>
                           </div>
                         )}
+
+                        {/* Steps Section */}
+                        <div className="mt-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium">Steps</h4>
+                            <Button size="sm" variant="outline" onClick={() => setShowAddStep(recipe.id)}>
+                              <Plus className="h-4 w-4 mr-1" /> Add Step
+                            </Button>
+                          </div>
+
+                          {showAddStep === recipe.id && (
+                            <Card className="mb-4 bg-muted/50">
+                              <CardContent className="pt-4">
+                                <div className="grid gap-3">
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div>
+                                      <label className="text-sm font-medium">Step #</label>
+                                      <Input type="number" value={stepData.stepNumber} onChange={(e) => setStepData({ ...stepData, stepNumber: Number(e.target.value) })} />
+                                    </div>
+                                    <div className="col-span-2">
+                                      <label className="text-sm font-medium">Duration (min)</label>
+                                      <Input type="number" value={stepData.duration} onChange={(e) => setStepData({ ...stepData, duration: Number(e.target.value) })} />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-sm font-medium">Instruction *</label>
+                                    <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" rows={3} value={stepData.instruction} onChange={(e) => setStepData({ ...stepData, instruction: e.target.value })} placeholder="Describe the step..." />
+                                  </div>
+                                  <div>
+                                    <label className="text-sm font-medium">Notes</label>
+                                    <Input value={stepData.notes} onChange={(e) => setStepData({ ...stepData, notes: e.target.value })} placeholder="Optional notes" />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleAddStep(recipe.id, version.id)}>Save Step</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setShowAddStep(null)}>Cancel</Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {version.steps?.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-4">No steps added yet.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {version.steps?.sort((a, b) => a.stepNumber - b.stepNumber).map((step) => (
+                                <div key={step.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+                                    {step.stepNumber}
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-sm">{step.instruction}</p>
+                                    <div className="flex gap-4 mt-1">
+                                      {step.duration && <span className="text-xs text-muted-foreground">{step.duration} min</span>}
+                                      {step.notes && <span className="text-xs text-muted-foreground">{step.notes}</span>}
+                                    </div>
+                                  </div>
+                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteStep(recipe.id, version.id, step.id)}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
                     )}
 

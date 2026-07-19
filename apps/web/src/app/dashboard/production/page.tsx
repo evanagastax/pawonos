@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Factory, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Factory, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
 import api from "@/lib/api";
 
 interface Batch {
@@ -12,6 +12,15 @@ interface Batch {
   status: string;
   scheduledDate: string;
   order: { orderNumber: string; customer: { name: string }; quantity: number; mealTemplate: { name: string } };
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  status: string;
+  quantity: number;
+  customer: { name: string };
+  mealTemplate: { name: string };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,10 +34,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ProductionPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
+  const [showGenerate, setShowGenerate] = useState(false);
 
-  useEffect(() => { fetchBatches(); fetchSummary(); }, []);
+  useEffect(() => { fetchBatches(); fetchSummary(); fetchOrders(); }, []);
 
   const fetchBatches = async () => {
     try { const res = await api.get("/production"); setBatches(res.data.items || []); }
@@ -41,14 +52,76 @@ export default function ProductionPage() {
     catch (err) { console.error(err); }
   };
 
+  const fetchOrders = async () => {
+    try {
+      const res = await api.get("/orders");
+      setOrders((res.data.items || []).filter((o: Order) => o.status === "CONFIRMED"));
+    } catch (err) { console.error(err); }
+  };
+
   const handleStatus = async (id: string, status: string) => {
     try { await api.put(`/production/${id}/status`, { status }); fetchBatches(); fetchSummary(); }
     catch (err: any) { alert(err.response?.data?.message || "Failed"); }
   };
 
+  const handleGenerate = async (orderId: string) => {
+    try {
+      await api.post(`/production/generate/${orderId}`);
+      setShowGenerate(false);
+      fetchBatches();
+      fetchSummary();
+      fetchOrders();
+    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+  };
+
   return (
     <div className="space-y-6">
-      <div><h2 className="text-3xl font-bold tracking-tight">Production</h2><p className="text-muted-foreground">Kitchen production batches</p></div>
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-3xl font-bold tracking-tight">Production</h2><p className="text-muted-foreground">Kitchen production batches</p></div>
+        <Button onClick={() => setShowGenerate(!showGenerate)}>
+          <Plus className="mr-2 h-4 w-4" /> Generate Batch
+        </Button>
+      </div>
+
+      {showGenerate && orders.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Generate from Confirmed Orders</CardTitle></CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead><tr className="border-b bg-muted/50">
+                  <th className="p-3 text-left font-medium">Order #</th>
+                  <th className="p-3 text-left font-medium">Customer</th>
+                  <th className="p-3 text-left font-medium">Template</th>
+                  <th className="p-3 text-right font-medium">Qty</th>
+                  <th className="p-3 text-center font-medium">Action</th>
+                </tr></thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id} className="border-b">
+                      <td className="p-3 font-medium">{order.orderNumber}</td>
+                      <td className="p-3">{order.customer?.name}</td>
+                      <td className="p-3">{order.mealTemplate?.name}</td>
+                      <td className="p-3 text-right">{order.quantity}</td>
+                      <td className="p-3 text-center">
+                        <Button size="sm" onClick={() => handleGenerate(order.id)}>Generate</Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showGenerate && orders.length === 0 && (
+        <Card>
+          <CardContent className="py-8">
+            <p className="text-center text-muted-foreground">No confirmed orders available for production.</p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Today&apos;s Batches</CardTitle><Factory className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{summary?.totalBatches || 0}</div></CardContent></Card>
@@ -63,7 +136,7 @@ export default function ProductionPage() {
             <Button variant="outline" onClick={() => { fetchBatches(); fetchSummary(); }}>Refresh</Button>
           </div>
           {loading ? <p className="text-center py-8">Loading...</p> : batches.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8"><Factory className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No production batches. Create an order first.</p></div>
+            <div className="flex flex-col items-center justify-center py-8"><Factory className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No production batches. Click &quot;Generate Batch&quot; to create from confirmed orders.</p></div>
           ) : (
             <div className="rounded-md border">
               <table className="w-full">

@@ -16,6 +16,7 @@ import {
   Truck,
   DollarSign,
   Settings,
+  Target,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -81,6 +82,11 @@ const navigation = [
     name: "Production",
     href: "/dashboard/production",
     icon: Settings,
+  },
+  {
+    name: "Optimizer",
+    href: "/dashboard/optimizer",
+    icon: Target,
   },
   {
     name: "Delivery",

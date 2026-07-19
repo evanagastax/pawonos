@@ -1,0 +1,37 @@
+# PawonOS Production Caddy Configuration
+
+pawonos.com {
+    # Frontend
+    handle /api/* {
+        reverse_proxy api:4000
+    }
+
+    # Backend
+    handle {
+        reverse_proxy web:3000
+    }
+
+    # TLS
+    tls {
+        protocols tls1.2 tls1.3
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        X-XSS-Protection "1; mode=block"
+    }
+
+    # Compression
+    encode gzip
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}
