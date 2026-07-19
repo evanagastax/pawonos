@@ -18,6 +18,7 @@ import {
   Settings,
   Target,
   FileText,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -113,6 +114,11 @@ const navigation = [
     name: "Payroll",
     href: "/dashboard/payroll",
     icon: DollarSign,
+  },
+  {
+    name: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
   },
 ];
 
