@@ -838,3 +838,96 @@ enum InvoiceStatus {
   OVERDUE
   CANCELLED
 }
+
+// ============================================
+// EMPLOYEES & PAYROLL
+// ============================================
+
+model Employee {
+  id              String   @id @default(cuid())
+  employeeCode    String   @unique
+  name            String
+  email           String?  @unique
+  phone           String?
+  address         String?
+  position        String
+  department      String?
+  joinDate        DateTime
+  salary          Float    @default(0)
+  bankName        String?
+  bankAccount     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  attendance      Attendance[]
+  payrollItems    PayrollItem[]
+
+  @@map("employees")
+}
+
+model Attendance {
+  id              String   @id @default(cuid())
+  employeeId      String
+  date            DateTime
+  checkIn         DateTime?
+  checkOut        DateTime?
+  status          AttendanceStatus @default(PRESENT)
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  employee        Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+  HALF_DAY
+}
+
+model Payroll {
+  id              String   @id @default(cuid())
+  period          String   // e.g., "2026-07"
+  startDate       DateTime
+  endDate         DateTime
+  status          PayrollStatus @default(DRAFT)
+  totalAmount     Float    @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           PayrollItem[]
+
+  @@unique([period])
+  @@map("payrolls")
+}
+
+model PayrollItem {
+  id              String   @id @default(cuid())
+  payrollId       String
+  employeeId      String
+  baseSalary      Float
+  overtime        Float    @default(0)
+  bonus           Float    @default(0)
+  deductions      Float    @default(0)
+  netSalary       Float
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  payroll         Payroll  @relation(fields: [payrollId], references: [id])
+  employee        Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("payroll_items")
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}

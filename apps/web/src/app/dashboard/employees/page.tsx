@@ -1,0 +1,124 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Search, Users, Trash2, X, UserCheck } from "lucide-react";
+import api from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
+
+interface Employee {
+  id: string;
+  employeeCode: string;
+  name: string;
+  position: string;
+  department: string | null;
+  salary: number;
+  isActive: boolean;
+}
+
+export default function EmployeesPage() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    employeeCode: "", name: "", email: "", phone: "", position: "",
+    department: "", joinDate: "", salary: 0, bankName: "", bankAccount: "",
+  });
+
+  useEffect(() => { fetchEmployees(); fetchDepartments(); }, []);
+
+  const fetchEmployees = async () => {
+    try { const res = await api.get("/employees", { params: { search } }); setEmployees(res.data.items || []); }
+    catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  const fetchDepartments = async () => {
+    try { const res = await api.get("/employees/departments"); setDepartments(res.data || []); }
+    catch (err) { console.error(err); }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post("/employees", formData);
+      setShowForm(false);
+      setFormData({ employeeCode: "", name: "", email: "", phone: "", position: "", department: "", joinDate: "", salary: 0, bankName: "", bankAccount: "" });
+      fetchEmployees();
+      toast("Employee added", "success");
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete employee?")) return;
+    try { await api.delete(`/employees/${id}`); fetchEmployees(); toast("Employee deleted", "success"); }
+    catch (err) { toast("Failed", "error"); }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-3xl font-bold tracking-tight">Employees</h2><p className="text-muted-foreground">Manage staff & attendance</p></div>
+        <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}{showForm ? "Cancel" : "Add Employee"}</Button>
+      </div>
+
+      {showForm && (
+        <Card><CardHeader><CardTitle>New Employee</CardTitle></CardHeader><CardContent>
+          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <div><label className="text-sm font-medium">Code *</label><Input value={formData.employeeCode} onChange={(e) => setFormData({ ...formData, employeeCode: e.target.value })} required /></div>
+            <div><label className="text-sm font-medium">Name *</label><Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required /></div>
+            <div><label className="text-sm font-medium">Position *</label><Input value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} required /></div>
+            <div><label className="text-sm font-medium">Department</label><Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} list="departments" /></div>
+            <datalist id="departments">{departments.map(d => <option key={d} value={d} />)}</datalist>
+            <div><label className="text-sm font-medium">Join Date *</label><Input type="date" value={formData.joinDate} onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })} required /></div>
+            <div><label className="text-sm font-medium">Salary</label><Input type="number" value={formData.salary} onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })} /></div>
+            <div><label className="text-sm font-medium">Phone</label><Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
+            <div><label className="text-sm font-medium">Email</label><Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
+            <div className="md:col-span-2"><Button type="submit">Save Employee</Button></div>
+          </form>
+        </CardContent></Card>
+      )}
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
+            <Button variant="outline" onClick={fetchEmployees}>Refresh</Button>
+          </div>
+          {loading ? <p className="text-center py-8">Loading...</p> : employees.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8"><Users className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No employees found.</p></div>
+          ) : (
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead><tr className="border-b bg-muted/50">
+                  <th className="p-4 text-left font-medium">Code</th>
+                  <th className="p-4 text-left font-medium">Name</th>
+                  <th className="p-4 text-left font-medium">Position</th>
+                  <th className="p-4 text-left font-medium">Department</th>
+                  <th className="p-4 text-right font-medium">Salary</th>
+                  <th className="p-4 text-center font-medium">Actions</th>
+                </tr></thead>
+                <tbody>
+                  {employees.map((emp) => (
+                    <tr key={emp.id} className="border-b">
+                      <td className="p-4 font-medium">{emp.employeeCode}</td>
+                      <td className="p-4">{emp.name}</td>
+                      <td className="p-4">{emp.position}</td>
+                      <td className="p-4">{emp.department || "-"}</td>
+                      <td className="p-4 text-right">Rp {emp.salary?.toLocaleString()}</td>
+                      <td className="p-4 text-center"><Button variant="ghost" size="icon" onClick={() => handleDelete(emp.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

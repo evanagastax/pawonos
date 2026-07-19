@@ -104,6 +104,16 @@ const navigation = [
     href: "/dashboard/invoices",
     icon: FileText,
   },
+  {
+    name: "Employees",
+    href: "/dashboard/employees",
+    icon: Users,
+  },
+  {
+    name: "Payroll",
+    href: "/dashboard/payroll",
+    icon: DollarSign,
+  },
 ];
 
 export function Sidebar() {

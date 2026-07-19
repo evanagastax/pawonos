@@ -18,6 +18,8 @@ import { PurchasingModule } from "./modules/purchasing/purchasing.module";
 import { CostEngineModule } from "./modules/cost-engine/cost-engine.module";
 import { FinanceModule } from "./modules/finance/finance.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
+import { EmployeesModule } from "./modules/employees/employees.module";
+import { PayrollModule } from "./modules/payroll/payroll.module";
 
 @Module({
   imports: [
@@ -49,6 +51,8 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
     CostEngineModule,
     FinanceModule,
     InvoicesModule,
+    EmployeesModule,
+    PayrollModule,
   ],
 })
 export class AppModule {}
