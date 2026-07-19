@@ -36,7 +36,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       
-      router.push("/");
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {

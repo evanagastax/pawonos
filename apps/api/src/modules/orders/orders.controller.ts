@@ -47,6 +47,12 @@ export class OrdersController {
     return this.service.updateStatus(id, status);
   }
 
+  @Delete(":id")
+  @ApiOperation({ summary: "Delete order" })
+  async remove(@Param("id") id: string) {
+    return this.service.remove(id);
+  }
+
   @Get(":id/ingredients")
   @ApiOperation({ summary: "Calculate ingredients needed" })
   async calculateIngredients(@Param("id") id: string) {

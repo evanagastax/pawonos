@@ -24,72 +24,72 @@ import { useState } from "react";
 const navigation = [
   {
     name: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
     name: "Meal Calendar",
-    href: "/calendar",
+    href: "/dashboard/calendar",
     icon: CalendarDays,
   },
   {
     name: "Orders",
-    href: "/orders",
+    href: "/dashboard/orders",
     icon: ShoppingCart,
   },
   {
     name: "Customers",
-    href: "/customers",
+    href: "/dashboard/customers",
     icon: Users,
   },
   {
     name: "Suppliers",
-    href: "/suppliers",
+    href: "/dashboard/suppliers",
     icon: Truck,
   },
   {
     name: "Ingredients",
-    href: "/ingredients",
+    href: "/dashboard/ingredients",
     icon: Package,
   },
   {
     name: "Recipes",
-    href: "/recipes",
+    href: "/dashboard/recipes",
     icon: BookOpen,
   },
   {
     name: "Menu Items",
-    href: "/menu-items",
+    href: "/dashboard/menu-items",
     icon: UtensilsCrossed,
   },
   {
     name: "Meal Templates",
-    href: "/meal-templates",
+    href: "/dashboard/meal-templates",
     icon: ClipboardList,
   },
   {
     name: "Inventory",
-    href: "/inventory",
+    href: "/dashboard/inventory",
     icon: Warehouse,
   },
   {
     name: "Purchasing",
-    href: "/purchasing",
+    href: "/dashboard/purchasing",
     icon: ShoppingCart,
   },
   {
     name: "Production",
-    href: "/production",
+    href: "/dashboard/production",
     icon: Settings,
   },
   {
     name: "Delivery",
-    href: "/delivery",
+    href: "/dashboard/delivery",
     icon: Truck,
   },
   {
     name: "Finance",
-    href: "/finance",
+    href: "/dashboard/finance",
     icon: DollarSign,
   },
 ];

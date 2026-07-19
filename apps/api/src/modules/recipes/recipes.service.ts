@@ -4,6 +4,7 @@ import { CreateRecipeDto } from "./dto/create-recipe.dto";
 import { CreateRecipeVersionDto } from "./dto/create-recipe-version.dto";
 import { CreateRecipeItemDto } from "./dto/create-recipe-item.dto";
 import { CreateRecipeStepDto } from "./dto/create-recipe-step.dto";
+import { calculateItemCost } from "@pawonos/utils";
 
 @Injectable()
 export class RecipesService {
@@ -117,6 +118,13 @@ export class RecipesService {
     if (recipe.menuItems.length > 0) {
       throw new BadRequestException("Cannot delete recipe with menu items");
     }
+
+    // Cascade delete: versions -> items/steps -> recipe
+    for (const version of recipe.versions) {
+      await this.prisma.recipeItem.deleteMany({ where: { recipeVersionId: version.id } });
+      await this.prisma.recipeStep.deleteMany({ where: { recipeVersionId: version.id } });
+    }
+    await this.prisma.recipeVersion.deleteMany({ where: { recipeId: id } });
 
     return this.prisma.recipe.delete({
       where: { id },
@@ -370,14 +378,20 @@ export class RecipesService {
     let materialCost = 0;
     let packagingCost = 0;
 
-    // Calculate ingredient costs
+    // Calculate ingredient costs with unit conversion
     for (const item of version.items) {
       if (item.ingredient) {
         const inventory = await this.prisma.inventory.findUnique({
           where: { ingredientId: item.ingredientId },
         });
-        const unitCost = inventory?.averageCost || item.ingredient.purchasePrice || 0;
-        materialCost += unitCost * item.quantity;
+        const purchasePrice = inventory?.averageCost || item.ingredient.purchasePrice || 0;
+        const purchaseUnit = item.ingredient.unit?.symbol || "kg";
+        const recipeUnit = item.unit?.symbol || "kg";
+        
+        // Use unit-aware cost calculation
+        // purchasePrice is per purchaseUnit (e.g., per kg)
+        // item.quantity is in recipeUnit (e.g., grams)
+        materialCost += calculateItemCost(purchasePrice, purchaseUnit, item.quantity, recipeUnit);
       }
       if (item.packaging) {
         const inventory = await this.prisma.inventory.findUnique({

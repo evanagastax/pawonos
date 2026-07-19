@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { calculateItemCost } from "@pawonos/utils";
 
 @Injectable()
 export class CostEngineService {
@@ -26,8 +27,12 @@ export class CostEngineService {
     for (const item of version.items) {
       if (item.ingredient) {
         const inventory = await this.prisma.inventory.findUnique({ where: { ingredientId: item.ingredientId } });
-        const unitCost = inventory?.averageCost || item.ingredient.purchasePrice || 0;
-        materialCost += unitCost * item.quantity;
+        const purchasePrice = inventory?.averageCost || item.ingredient.purchasePrice || 0;
+        const purchaseUnit = item.ingredient.unit?.symbol || "kg";
+        const recipeUnit = item.unit?.symbol || "kg";
+        
+        // Use unit-aware cost calculation
+        materialCost += calculateItemCost(purchasePrice, purchaseUnit, item.quantity, recipeUnit);
       }
       if (item.packaging) {
         const inventory = await this.prisma.inventory.findUnique({ where: { packagingId: item.packagingId } });

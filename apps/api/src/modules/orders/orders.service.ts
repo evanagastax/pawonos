@@ -135,6 +135,16 @@ export class OrdersService {
     return this.prisma.order.update({ where: { id }, data: { status: status as any } });
   }
 
+  async remove(id: string) {
+    const order = await this.findOne(id);
+    if (order.status !== "DRAFT") {
+      throw new BadRequestException("Can only delete draft orders");
+    }
+    // Delete order items first
+    await this.prisma.orderItem.deleteMany({ where: { orderId: id } });
+    return this.prisma.order.delete({ where: { id } });
+  }
+
   async calculateIngredients(id: string) {
     const order = await this.findOne(id);
     const ingredients: Record<string, { name: string; quantity: number; unit: string }> = {};

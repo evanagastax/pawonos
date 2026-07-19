@@ -77,7 +77,7 @@ export class IngredientsService {
 
   async create(dto: CreateIngredientDto) {
     // Check if SKU already exists
-    if (dto.sku) {
+    if (dto.sku && dto.sku.trim() !== "") {
       const existing = await this.prisma.ingredient.findUnique({
         where: { sku: dto.sku },
       });
@@ -89,7 +89,7 @@ export class IngredientsService {
     const ingredient = await this.prisma.ingredient.create({
       data: {
         name: dto.name,
-        sku: dto.sku,
+        sku: dto.sku && dto.sku.trim() !== "" ? dto.sku : null,
         categoryId: dto.categoryId,
         unitId: dto.unitId,
         purchasePrice: dto.purchasePrice || 0,
