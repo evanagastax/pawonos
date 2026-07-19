@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, UtensilsCrossed, Trash2, X } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface MenuItem {
   id: string;
@@ -56,13 +56,13 @@ export default function MenuItemsPage() {
       setShowForm(false);
       setFormData({ name: "", description: "", recipeId: "", recipeVersionId: "", sellingPrice: 0 });
       fetchItems();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
     try { await api.delete(`/menu-items/${id}`); fetchItems(); }
-    catch { alert("Failed"); }
+    catch { toast("Failed", "error"); }
   };
 
   return (

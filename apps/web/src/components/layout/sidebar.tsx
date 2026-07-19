@@ -17,6 +17,7 @@ import {
   DollarSign,
   Settings,
   Target,
+  FileText,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -97,6 +98,11 @@ const navigation = [
     name: "Finance",
     href: "/dashboard/finance",
     icon: DollarSign,
+  },
+  {
+    name: "Invoices",
+    href: "/dashboard/invoices",
+    icon: FileText,
   },
 ];
 

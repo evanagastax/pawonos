@@ -16,6 +16,8 @@ import { ProductionModule } from "./modules/production/production.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { PurchasingModule } from "./modules/purchasing/purchasing.module";
 import { CostEngineModule } from "./modules/cost-engine/cost-engine.module";
+import { FinanceModule } from "./modules/finance/finance.module";
+import { InvoicesModule } from "./modules/invoices/invoices.module";
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { CostEngineModule } from "./modules/cost-engine/cost-engine.module";
     InventoryModule,
     PurchasingModule,
     CostEngineModule,
+    FinanceModule,
+    InvoicesModule,
   ],
 })
 export class AppModule {}

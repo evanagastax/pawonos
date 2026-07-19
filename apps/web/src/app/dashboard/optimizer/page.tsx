@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Target, TrendingDown, AlertTriangle, CheckCircle } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface Recipe {
   id: string;
@@ -65,7 +65,7 @@ export default function OptimizerPage() {
         targetMargin,
       });
       setResult(res.data);
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
     finally { setLoading(false); }
   };
 

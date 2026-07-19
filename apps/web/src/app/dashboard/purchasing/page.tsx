@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ShoppingCart, Trash2, X } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface PurchaseOrder {
   id: string;
@@ -51,7 +51,7 @@ export default function PurchasingPage() {
       await api.post("/purchasing", { ...formData, items: items.filter(i => i.ingredientId) });
       setShowForm(false);
       fetchOrders();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleReceive = async (id: string) => {
@@ -61,7 +61,7 @@ export default function PurchasingPage() {
       const receiveItems = order.items.map((item: any) => ({ itemId: item.id, receivedQty: item.quantity }));
       await api.post(`/purchasing/${id}/receive`, { items: receiveItems });
       fetchOrders();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   return (

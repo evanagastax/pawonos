@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ClipboardList, Trash2, X } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface Template {
   id: string;
@@ -45,7 +45,7 @@ export default function MealTemplatesPage() {
       setShowForm(false);
       setFormData({ name: "", description: "" });
       fetchTemplates();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleAddItem = async (templateId: string) => {
@@ -53,18 +53,18 @@ export default function MealTemplatesPage() {
       await api.post(`/meal-templates/${templateId}/items`, addItemData);
       setAddItemData({ menuItemId: "", quantity: 1 });
       fetchTemplates();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
     try { await api.delete(`/meal-templates/${id}`); fetchTemplates(); }
-    catch { alert("Failed"); }
+    catch { toast("Failed", "error"); }
   };
 
   const handleDeleteItem = async (templateId: string, itemId: string) => {
     try { await api.delete(`/meal-templates/${templateId}/items/${itemId}`); fetchTemplates(); }
-    catch { alert("Failed"); }
+    catch { toast("Failed", "error"); }
   };
 
   return (

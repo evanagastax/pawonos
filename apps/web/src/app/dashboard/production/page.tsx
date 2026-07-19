@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Factory, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface Batch {
   id: string;
@@ -61,7 +61,7 @@ export default function ProductionPage() {
 
   const handleStatus = async (id: string, status: string) => {
     try { await api.put(`/production/${id}/status`, { status }); fetchBatches(); fetchSummary(); }
-    catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleGenerate = async (orderId: string) => {
@@ -71,7 +71,7 @@ export default function ProductionPage() {
       fetchBatches();
       fetchSummary();
       fetchOrders();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   return (

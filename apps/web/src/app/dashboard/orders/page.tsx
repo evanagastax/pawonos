@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ShoppingCart, Trash2, X, Clock, CheckCircle, Truck } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface Order {
   id: string;
@@ -67,18 +67,18 @@ export default function OrdersPage() {
       await api.post("/orders", formData);
       setShowForm(false);
       fetchOrders();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleStatus = async (id: string, status: string) => {
     try { await api.put(`/orders/${id}/status`, { status }); fetchOrders(); }
-    catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
     try { await api.delete(`/orders/${id}`); fetchOrders(); }
-    catch { alert("Failed"); }
+    catch { toast("Failed", "error"); }
   };
 
   const todayOrders = orders.filter(o => new Date(o.deliveryDate).toDateString() === new Date().toDateString());

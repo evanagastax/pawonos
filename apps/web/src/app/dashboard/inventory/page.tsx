@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Warehouse, AlertTriangle, Package } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface InventoryItem {
   id: string;
@@ -39,7 +39,7 @@ export default function InventoryPage() {
       setShowPurchase(null);
       setPurchaseData({ quantity: 0, unitCost: 0 });
       fetchInventory();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const lowStock = items.filter(i => {

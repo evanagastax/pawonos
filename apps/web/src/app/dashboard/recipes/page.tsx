@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, BookOpen, Trash2, X, ChevronDown, ChevronUp } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface RecipeItem {
   id: string;
@@ -96,14 +96,14 @@ export default function RecipesPage() {
       setShowForm(false);
       setFormData({ name: "", description: "" });
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleCreateVersion = async (recipeId: string) => {
     try {
       await api.post(`/recipes/${recipeId}/versions`, { yield: 1 });
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleAddItem = async (recipeId: string, versionId: string) => {
@@ -119,14 +119,14 @@ export default function RecipesPage() {
       setShowAddItem(null);
       setItemData({ ingredientId: "", packagingId: "", quantity: 0, unitId: "", type: "ingredient" });
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDeleteItem = async (recipeId: string, versionId: string, itemId: string) => {
     try {
       await api.delete(`/recipes/${recipeId}/versions/${versionId}/items/${itemId}`);
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleAddStep = async (recipeId: string, versionId: string) => {
@@ -135,20 +135,20 @@ export default function RecipesPage() {
       setShowAddStep(null);
       setStepData({ stepNumber: 1, instruction: "", duration: 0, notes: "" });
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDeleteStep = async (recipeId: string, versionId: string, stepId: string) => {
     try {
       await api.delete(`/recipes/${recipeId}/versions/${versionId}/steps/${stepId}`);
       fetchRecipes();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete recipe?")) return;
     try { await api.delete(`/recipes/${id}`); fetchRecipes(); }
-    catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   return (

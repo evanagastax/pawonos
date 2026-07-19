@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Users, Trash2, X } from "lucide-react";
-import api from "@/lib/api";
+import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
 
 interface Customer {
   id: string;
@@ -40,13 +40,13 @@ export default function CustomersPage() {
       setShowForm(false);
       setFormData({ name: "", company: "", phone: "", email: "", address: "", notes: "" });
       fetchCustomers();
-    } catch (err: any) { alert(err.response?.data?.message || "Failed"); }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
     try { await api.delete(`/customers/${id}`); fetchCustomers(); }
-    catch { alert("Failed"); }
+    catch { toast("Failed", "error"); }
   };
 
   return (

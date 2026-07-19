@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Package, Edit, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 interface Ingredient {
   id: string;
@@ -76,8 +77,9 @@ export default function IngredientsPage() {
       setShowForm(false);
       setFormData({ name: "", sku: "", categoryId: "", unitId: "", purchasePrice: 0, minimumStock: 0 });
       fetchIngredients();
+      toast("Ingredient created", "success");
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to create ingredient");
+      toast(err.response?.data?.message || "Failed to create ingredient", "error");
     }
   };
 
@@ -86,8 +88,9 @@ export default function IngredientsPage() {
     try {
       await api.delete(`/ingredients/${id}`);
       fetchIngredients();
+      toast("Ingredient deleted", "success");
     } catch (err) {
-      alert("Failed to delete ingredient");
+      toast("Failed to delete ingredient", "error");
     }
   };
 
