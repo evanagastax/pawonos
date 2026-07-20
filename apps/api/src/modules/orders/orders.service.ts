@@ -137,11 +137,14 @@ export class OrdersService {
 
   async remove(id: string) {
     const order = await this.findOne(id);
-    if (order.status !== "DRAFT") {
-      throw new BadRequestException("Can only delete draft orders");
+    if (["DELIVERED", "COMPLETED"].includes(order.status)) {
+      throw new BadRequestException("Cannot delete delivered/completed orders");
     }
-    // Delete order items first
+    // Delete related records first
     await this.prisma.orderItem.deleteMany({ where: { orderId: id } });
+    await this.prisma.payment.deleteMany({ where: { orderId: id } });
+    await this.prisma.invoice.deleteMany({ where: { orderId: id } });
+    await this.prisma.productionBatch.deleteMany({ where: { orderId: id } });
     return this.prisma.order.delete({ where: { id } });
   }
 
