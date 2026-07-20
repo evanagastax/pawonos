@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { LoggerModule } from "nestjs-pino";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { HealthController } from "./common/health/health.controller";
 import { AuthModule } from "./modules/auth/auth.module";
 import { IngredientsModule } from "./modules/ingredients/ingredients.module";
 import { SuppliersModule } from "./modules/suppliers/suppliers.module";
@@ -64,5 +65,6 @@ import { CrmModule } from "./modules/crm/crm.module";
     PosModule,
     CrmModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

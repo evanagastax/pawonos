@@ -4,7 +4,28 @@ import { CreateRecipeDto } from "./dto/create-recipe.dto";
 import { CreateRecipeVersionDto } from "./dto/create-recipe-version.dto";
 import { CreateRecipeItemDto } from "./dto/create-recipe-item.dto";
 import { CreateRecipeStepDto } from "./dto/create-recipe-step.dto";
-import { calculateItemCost } from "@pawonos/utils";
+
+// Inline unit conversion (from @pawonos/utils)
+const UNIT_TO_BASE: Record<string, { base: string; factor: number }> = {
+  kg: { base: "kg", factor: 1 },
+  g: { base: "kg", factor: 0.001 },
+  mg: { base: "kg", factor: 0.000001 },
+  l: { base: "l", factor: 1 },
+  ml: { base: "l", factor: 0.001 },
+  pcs: { base: "pcs", factor: 1 },
+  pack: { base: "pcs", factor: 1 },
+  box: { base: "pcs", factor: 1 },
+  sachet: { base: "pcs", factor: 1 },
+};
+
+function calculateItemCost(purchasePrice: number, purchaseUnit: string, quantity: number, recipeUnit: string): number {
+  if (purchaseUnit.toLowerCase() === recipeUnit.toLowerCase()) return purchasePrice * quantity;
+  const from = UNIT_TO_BASE[recipeUnit.toLowerCase()];
+  const to = UNIT_TO_BASE[purchaseUnit.toLowerCase()];
+  if (!from || !to || from.base !== to.base) return purchasePrice * quantity;
+  const convertedQty = (quantity * from.factor) / to.factor;
+  return purchasePrice * convertedQty;
+}
 
 @Injectable()
 export class RecipesService {
