@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Truck, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Supplier {
   id: string;
@@ -27,10 +30,8 @@ export default function SuppliersPage() {
   useEffect(() => { fetchSuppliers(); }, []);
 
   const fetchSuppliers = async () => {
-    try {
-      const res = await api.get("/suppliers", { params: { search } });
-      setSuppliers(res.data.items || []);
-    } catch (err) { console.error(err); }
+    try { const res = await api.get("/suppliers", { params: { search } }); setSuppliers(res.data.items || []); }
+    catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
@@ -41,106 +42,97 @@ export default function SuppliersPage() {
       setShowForm(false);
       setFormData({ name: "", contactName: "", phone: "", email: "", address: "" });
       fetchSuppliers();
+      toast("Supplier added", "success");
     } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
-    try { await api.delete(`/suppliers/${id}`); fetchSuppliers(); }
+    try { await api.delete(`/suppliers/${id}`); fetchSuppliers(); toast("Supplier deleted", "success"); }
     catch { toast("Failed", "error"); }
   };
 
+  const columns = [
+    { key: "name", label: "Name", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "contactName", label: "Contact", render: (v: string) => v || "-" },
+    { key: "phone", label: "Phone", render: (v: string) => v || "-" },
+    { key: "email", label: "Email", render: (v: string) => v || "-" },
+    { key: "_count", label: "Ingredients", align: "center" as const, render: (v: any) => v?.ingredients || 0 },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Suppliers</h2>
-          <p className="text-muted-foreground">Manage supplier contacts</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "Add Supplier"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Suppliers"
+        description="Manage supplier contacts"
+        action={{ label: "Add Supplier", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchSuppliers}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Supplier</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Name *</label>
+        <FormCard title="New Supplier" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Name" required>
                 <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Contact</label>
+              </FormField>
+              <FormField label="Contact">
                 <Input value={formData.contactName} onChange={(e) => setFormData({ ...formData, contactName: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Phone</label>
+              </FormField>
+              <FormField label="Phone">
                 <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Email</label>
+              </FormField>
+              <FormField label="Email">
                 <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Save Supplier</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+              <FormField label="Address" className="md:col-span-2">
+                <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Save Supplier</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search suppliers..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Button variant="outline" onClick={fetchSuppliers}>Refresh</Button>
-          </div>
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Suppliers</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{suppliers.length}</div></CardContent>
+        </Card>
+      </StatsGrid>
 
-          {loading ? <p className="text-center py-8">Loading...</p> : suppliers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">No suppliers found.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-medium">Name</th>
-                    <th className="p-4 text-left font-medium">Contact</th>
-                    <th className="p-4 text-left font-medium">Phone</th>
-                    <th className="p-4 text-left font-medium">Email</th>
-                    <th className="p-4 text-center font-medium">Ingredients</th>
-                    <th className="p-4 text-center font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {suppliers.map((s) => (
-                    <tr key={s.id} className="border-b">
-                      <td className="p-4 font-medium">{s.name}</td>
-                      <td className="p-4">{s.contactName || "-"}</td>
-                      <td className="p-4">{s.phone || "-"}</td>
-                      <td className="p-4">{s.email || "-"}</td>
-                      <td className="p-4 text-center">{s._count?.ingredients || 0}</td>
-                      <td className="p-4 text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search suppliers..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </FilterBar>
+
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={suppliers}
+          emptyMessage="No suppliers found. Click 'Add Supplier' to create your first supplier."
+        />
+      )}
     </div>
   );
 }

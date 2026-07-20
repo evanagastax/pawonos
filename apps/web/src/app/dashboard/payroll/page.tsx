@@ -7,14 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DollarSign, Plus, Clock, CheckCircle, X } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-
-interface Payroll {
-  id: string;
-  period: string;
-  status: string;
-  totalAmount: number;
-  items: Array<{ employee: { name: string }; netSalary: number }>;
-}
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-800",
@@ -24,12 +19,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function PayrollPage() {
-  const [payrolls, setPayrolls] = useState<Payroll[]>([]);
+  const [payrolls, setPayrolls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
-    period: "", startDate: "", endDate: "",
-  });
+  const [formData, setFormData] = useState({ period: "", startDate: "", endDate: "" });
 
   useEffect(() => { fetchPayrolls(); }, []);
 
@@ -58,61 +51,72 @@ export default function PayrollPage() {
     } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
+  const columns = [
+    { key: "period", label: "Period", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "items", label: "Employees", align: "right" as const, render: (v: any) => v?.length || 0 },
+    { key: "totalAmount", label: "Total", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    {
+      key: "status",
+      label: "Status",
+      align: "center" as const,
+      render: (v: string) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v] || ""}`}>{v}</span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <div className="flex gap-1 justify-center">
+          {row.status === "DRAFT" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "approve")}>Approve</Button>}
+          {row.status === "APPROVED" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "pay")}>Mark Paid</Button>}
+          {["DRAFT", "APPROVED"].includes(row.status) && <Button size="sm" variant="ghost" onClick={() => handleStatus(row.id, "cancel")}>Cancel</Button>}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-3xl font-bold tracking-tight">Payroll</h2><p className="text-muted-foreground">Generate & manage payroll</p></div>
-        <Button onClick={() => setShowForm(!showForm)}>{showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}{showForm ? "Cancel" : "Generate Payroll"}</Button>
-      </div>
+      <PageHeader
+        title="Payroll"
+        description="Generate & manage payroll"
+        action={{ label: "Generate Payroll", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchPayrolls}
+      />
 
       {showForm && (
-        <Card><CardHeader><CardTitle>Generate Payroll</CardTitle></CardHeader><CardContent>
-          <form onSubmit={handleGenerate} className="grid gap-4 md:grid-cols-3">
-            <div><label className="text-sm font-medium">Period *</label><Input value={formData.period} onChange={(e) => setFormData({ ...formData, period: e.target.value })} placeholder="2026-07" required /></div>
-            <div><label className="text-sm font-medium">Start Date *</label><Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} required /></div>
-            <div><label className="text-sm font-medium">End Date *</label><Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} required /></div>
-            <div className="md:col-span-3"><Button type="submit">Generate</Button></div>
+        <FormCard title="Generate Payroll" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleGenerate} className="space-y-4">
+            <FormGrid columns={3}>
+              <FormField label="Period" required>
+                <Input value={formData.period} onChange={(e) => setFormData({ ...formData, period: e.target.value })} placeholder="2026-07" required />
+              </FormField>
+              <FormField label="Start Date" required>
+                <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} required />
+              </FormField>
+              <FormField label="End Date" required>
+                <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} required />
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Generate</Button>
+            </FormActions>
           </form>
-        </CardContent></Card>
+        </FormCard>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <Button variant="outline" onClick={fetchPayrolls} className="mb-4">Refresh</Button>
-          {loading ? <p className="text-center py-8">Loading...</p> : payrolls.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8"><DollarSign className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No payrolls found.</p></div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-4 text-left font-medium">Period</th>
-                  <th className="p-4 text-right font-medium">Employees</th>
-                  <th className="p-4 text-right font-medium">Total</th>
-                  <th className="p-4 text-center font-medium">Status</th>
-                  <th className="p-4 text-center font-medium">Actions</th>
-                </tr></thead>
-                <tbody>
-                  {payrolls.map((p) => (
-                    <tr key={p.id} className="border-b">
-                      <td className="p-4 font-medium">{p.period}</td>
-                      <td className="p-4 text-right">{p.items?.length || 0}</td>
-                      <td className="p-4 text-right">Rp {p.totalAmount?.toLocaleString()}</td>
-                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[p.status] || ""}`}>{p.status}</span></td>
-                      <td className="p-4 text-center">
-                        <div className="flex gap-1 justify-center">
-                          {p.status === "DRAFT" && <Button size="sm" variant="outline" onClick={() => handleStatus(p.id, "approve")}>Approve</Button>}
-                          {p.status === "APPROVED" && <Button size="sm" variant="outline" onClick={() => handleStatus(p.id, "pay")}>Mark Paid</Button>}
-                          {["DRAFT", "APPROVED"].includes(p.status) && <Button size="sm" variant="ghost" onClick={() => handleStatus(p.id, "cancel")}>Cancel</Button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={payrolls}
+          emptyMessage="No payrolls found."
+        />
+      )}
     </div>
   );
 }

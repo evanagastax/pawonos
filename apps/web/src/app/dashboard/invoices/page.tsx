@@ -7,15 +7,9 @@ import { Input } from "@/components/ui/input";
 import { FileText, Plus, DollarSign, Clock, AlertTriangle, CheckCircle, X } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  amount: number;
-  dueDate: string;
-  status: string;
-  order: { orderNumber: string; customer: { name: string } };
-}
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-gray-100 text-gray-800",
@@ -26,7 +20,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function InvoicesPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,9 +54,7 @@ export default function InvoicesPage() {
       setFormData({ orderId: "", dueDate: "", notes: "" });
       fetchData();
       toast("Invoice created", "success");
-    } catch (err: any) {
-      toast(err.response?.data?.message || "Failed", "error");
-    }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleStatus = async (id: string, status: string) => {
@@ -70,9 +62,7 @@ export default function InvoicesPage() {
       await api.put(`/invoices/${id}/status`, { status });
       fetchData();
       toast(`Invoice marked as ${status}`, "success");
-    } catch (err: any) {
-      toast(err.response?.data?.message || "Failed", "error");
-    }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handlePayment = async (invoiceId: string) => {
@@ -82,54 +72,77 @@ export default function InvoicesPage() {
       setPaymentData({ amount: 0, paymentMethod: "bank_transfer", reference: "" });
       fetchData();
       toast("Payment recorded", "success");
-    } catch (err: any) {
-      toast(err.response?.data?.message || "Failed", "error");
-    }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
+
+  const columns = [
+    { key: "invoiceNumber", label: "Invoice #", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "order", label: "Order", render: (v: any) => v?.orderNumber },
+    { key: "customer", label: "Customer", render: (_: any, row: any) => row.order?.customer?.name },
+    { key: "amount", label: "Amount", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    { key: "dueDate", label: "Due Date", render: (v: string) => new Date(v).toLocaleDateString() },
+    {
+      key: "status",
+      label: "Status",
+      align: "center" as const,
+      render: (v: string) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v] || ""}`}>{v}</span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <div className="flex gap-1 justify-center">
+          {row.status === "PENDING" && (
+            <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "SENT")}>Send</Button>
+          )}
+          {["SENT", "OVERDUE"].includes(row.status) && (
+            <Button size="sm" variant="outline" onClick={() => setShowPayment(row.id)}>
+              <DollarSign className="h-3 w-3 mr-1" /> Pay
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Invoices</h2>
-          <p className="text-muted-foreground">Manage invoices & payments</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "Create Invoice"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Invoices"
+        description="Manage invoices & payments"
+        action={{ label: "Create Invoice", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchData}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Invoice</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Order *</label>
+        <FormCard title="New Invoice" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Order" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.orderId} onChange={(e) => setFormData({ ...formData, orderId: e.target.value })} required>
                   <option value="">Select order</option>
                   {orders.map((o: any) => <option key={o.id} value={o.id}>{o.orderNumber} - {o.customer?.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Due Date *</label>
+              </FormField>
+              <FormField label="Due Date" required>
                 <Input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium">Notes</label>
+              </FormField>
+              <FormField label="Notes" className="md:col-span-2">
                 <Input value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Create Invoice</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Create Invoice</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      {/* Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
@@ -170,94 +183,40 @@ export default function InvoicesPage() {
             <p className="text-xs text-muted-foreground">Need follow up</p>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
-      {/* Invoice List */}
-      <Card>
-        <CardContent className="pt-6">
-          <Button variant="outline" onClick={fetchData} className="mb-4">Refresh</Button>
-          {loading ? (
-            <p className="text-center py-8">Loading...</p>
-          ) : invoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">No invoices found.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-4 text-left font-medium">Invoice #</th>
-                  <th className="p-4 text-left font-medium">Order</th>
-                  <th className="p-4 text-left font-medium">Customer</th>
-                  <th className="p-4 text-right font-medium">Amount</th>
-                  <th className="p-4 text-left font-medium">Due Date</th>
-                  <th className="p-4 text-center font-medium">Status</th>
-                  <th className="p-4 text-center font-medium">Actions</th>
-                </tr></thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr key={inv.id} className="border-b">
-                      <td className="p-4 font-medium">{inv.invoiceNumber}</td>
-                      <td className="p-4">{inv.order?.orderNumber}</td>
-                      <td className="p-4">{inv.order?.customer?.name}</td>
-                      <td className="p-4 text-right">Rp {inv.amount?.toLocaleString()}</td>
-                      <td className="p-4">{new Date(inv.dueDate).toLocaleDateString()}</td>
-                      <td className="p-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[inv.status] || ""}`}>
-                          {inv.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex gap-1 justify-center">
-                          {inv.status === "PENDING" && (
-                            <Button size="sm" variant="outline" onClick={() => handleStatus(inv.id, "SENT")}>Send</Button>
-                          )}
-                          {["SENT", "OVERDUE"].includes(inv.status) && (
-                            <Button size="sm" variant="outline" onClick={() => setShowPayment(inv.id)}>
-                              <DollarSign className="h-3 w-3 mr-1" /> Pay
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Payment Modal */}
       {showPayment && (
-        <Card>
-          <CardHeader><CardTitle>Record Payment</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Amount *</label>
-                <Input type="number" value={paymentData.amount} onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Method *</label>
-                <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={paymentData.paymentMethod} onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value })}>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="e_wallet">E-Wallet</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Reference</label>
-                <Input value={paymentData.reference} onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })} placeholder="Transaction ID" />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button onClick={() => handlePayment(showPayment)}>Record Payment</Button>
-                <Button variant="ghost" onClick={() => setShowPayment(null)}>Cancel</Button>
-              </div>
+        <FormCard title="Record Payment" onClose={() => setShowPayment(null)}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField label="Amount" required>
+              <Input type="number" value={paymentData.amount} onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })} required />
+            </FormField>
+            <FormField label="Method" required>
+              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={paymentData.paymentMethod} onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value })}>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash">Cash</option>
+                <option value="e_wallet">E-Wallet</option>
+              </select>
+            </FormField>
+            <FormField label="Reference">
+              <Input value={paymentData.reference} onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })} placeholder="Transaction ID" />
+            </FormField>
+            <div className="flex items-end gap-2">
+              <Button onClick={() => handlePayment(showPayment)}>Record Payment</Button>
+              <Button variant="ghost" onClick={() => setShowPayment(null)}>Cancel</Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </FormCard>
+      )}
+
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={invoices}
+          emptyMessage="No invoices found."
+        />
       )}
     </div>
   );

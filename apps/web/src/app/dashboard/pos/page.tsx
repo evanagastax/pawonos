@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ShoppingCart, Plus, Minus, Trash2, DollarSign } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
@@ -67,16 +66,16 @@ export default function PosPage() {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-200px)]">
+    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
       {/* Menu */}
       <div className="flex-1 overflow-auto">
         <h2 className="text-2xl font-bold mb-4">Menu</h2>
         {loading ? <p>Loading...</p> : (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {menu.map((item) => (
-              <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => addToCart(item)}>
-                <CardContent className="p-4">
-                  <p className="font-medium">{item.name}</p>
+              <Card key={item.id} className="cursor-pointer hover:shadow-md transition-shadow active:scale-95" onClick={() => addToCart(item)}>
+                <CardContent className="p-3 md:p-4">
+                  <p className="font-medium text-sm md:text-base">{item.name}</p>
                   <p className="text-lg font-bold mt-1">Rp {item.sellingPrice.toLocaleString()}</p>
                 </CardContent>
               </Card>
@@ -86,7 +85,7 @@ export default function PosPage() {
       </div>
 
       {/* Cart */}
-      <div className="w-96 flex flex-col">
+      <div className="w-full lg:w-96 flex flex-col">
         <Card className="flex-1 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -101,19 +100,19 @@ export default function PosPage() {
               <div className="space-y-3">
                 {cart.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{item.name}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.name}</p>
                       <p className="text-xs text-muted-foreground">Rp {item.sellingPrice.toLocaleString()}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.id, -1)}>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(item.id, -1)}>
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-6 text-center text-sm">{item.quantity}</span>
-                      <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.id, 1)}>
+                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                      <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(item.id, 1)}>
                         <Plus className="h-3 w-3" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeFromCart(item.id)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeFromCart(item.id)}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
                     </div>

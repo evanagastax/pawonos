@@ -25,155 +25,84 @@ import {
   Building,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navigation = [
-  {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    name: "Meal Calendar",
-    href: "/dashboard/calendar",
-    icon: CalendarDays,
-  },
-  {
-    name: "Orders",
-    href: "/dashboard/orders",
-    icon: ShoppingCart,
-  },
-  {
-    name: "Customers",
-    href: "/dashboard/customers",
-    icon: Users,
-  },
-  {
-    name: "Suppliers",
-    href: "/dashboard/suppliers",
-    icon: Truck,
-  },
-  {
-    name: "Ingredients",
-    href: "/dashboard/ingredients",
-    icon: Package,
-  },
-  {
-    name: "Recipes",
-    href: "/dashboard/recipes",
-    icon: BookOpen,
-  },
-  {
-    name: "Menu Items",
-    href: "/dashboard/menu-items",
-    icon: UtensilsCrossed,
-  },
-  {
-    name: "Meal Templates",
-    href: "/dashboard/meal-templates",
-    icon: ClipboardList,
-  },
-  {
-    name: "Inventory",
-    href: "/dashboard/inventory",
-    icon: Warehouse,
-  },
-  {
-    name: "Purchasing",
-    href: "/dashboard/purchasing",
-    icon: ShoppingCart,
-  },
-  {
-    name: "Production",
-    href: "/dashboard/production",
-    icon: Settings,
-  },
-  {
-    name: "Optimizer",
-    href: "/dashboard/optimizer",
-    icon: Target,
-  },
-  {
-    name: "Delivery",
-    href: "/dashboard/delivery",
-    icon: Truck,
-  },
-  {
-    name: "Finance",
-    href: "/dashboard/finance",
-    icon: DollarSign,
-  },
-  {
-    name: "Invoices",
-    href: "/dashboard/invoices",
-    icon: FileText,
-  },
-  {
-    name: "Employees",
-    href: "/dashboard/employees",
-    icon: Users,
-  },
-  {
-    name: "Payroll",
-    href: "/dashboard/payroll",
-    icon: DollarSign,
-  },
-  {
-    name: "Analytics",
-    href: "/dashboard/analytics",
-    icon: BarChart3,
-  },
-  {
-    name: "AI Forecast",
-    href: "/dashboard/forecast",
-    icon: Brain,
-  },
-  {
-    name: "POS",
-    href: "/dashboard/pos",
-    icon: CreditCard,
-  },
-  {
-    name: "CRM",
-    href: "/dashboard/crm",
-    icon: UserCheck,
-  },
-  {
-    name: "Branches",
-    href: "/dashboard/branches",
-    icon: Building,
-  },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Meal Calendar", href: "/dashboard/calendar", icon: CalendarDays },
+  { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
+  { name: "Customers", href: "/dashboard/customers", icon: Users },
+  { name: "Suppliers", href: "/dashboard/suppliers", icon: Truck },
+  { name: "Ingredients", href: "/dashboard/ingredients", icon: Package },
+  { name: "Recipes", href: "/dashboard/recipes", icon: BookOpen },
+  { name: "Menu Items", href: "/dashboard/menu-items", icon: UtensilsCrossed },
+  { name: "Meal Templates", href: "/dashboard/meal-templates", icon: ClipboardList },
+  { name: "Inventory", href: "/dashboard/inventory", icon: Warehouse },
+  { name: "Purchasing", href: "/dashboard/purchasing", icon: ShoppingCart },
+  { name: "Production", href: "/dashboard/production", icon: Settings },
+  { name: "Delivery", href: "/dashboard/delivery", icon: Truck },
+  { name: "Optimizer", href: "/dashboard/optimizer", icon: Target },
+  { name: "Finance", href: "/dashboard/finance", icon: DollarSign },
+  { name: "Invoices", href: "/dashboard/invoices", icon: FileText },
+  { name: "Employees", href: "/dashboard/employees", icon: Users },
+  { name: "Payroll", href: "/dashboard/payroll", icon: DollarSign },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "AI Forecast", href: "/dashboard/forecast", icon: Brain },
+  { name: "POS", href: "/dashboard/pos", icon: CreditCard },
+  { name: "CRM", href: "/dashboard/crm", icon: UserCheck },
+  { name: "Branches", href: "/dashboard/branches", icon: Building },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
-  return (
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    onMobileClose?.();
+  }, [pathname]);
+
+  const sidebarContent = (
     <div
       className={cn(
-        "flex flex-col border-r bg-card transition-all duration-300",
+        "flex flex-col h-full bg-card transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo */}
       <div className="flex h-16 items-center justify-between border-b px-4">
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <span className="text-xl font-bold">PawonOS</span>
           </Link>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="rounded p-1 hover:bg-accent"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Mobile close button */}
+          <button
+            onClick={onMobileClose}
+            className="md:hidden rounded p-1 hover:bg-accent"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {/* Desktop collapse button */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden md:block rounded p-1 hover:bg-accent"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -186,7 +115,7 @@ export function Sidebar() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -214,5 +143,25 @@ export function Sidebar() {
         )}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden md:flex border-r">{sidebarContent}</div>
+
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={onMobileClose}
+          />
+          <div className="fixed inset-y-0 left-0 w-64 border-r shadow-lg">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

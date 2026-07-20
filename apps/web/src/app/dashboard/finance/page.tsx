@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { DollarSign, TrendingUp, TrendingDown, Plus, X, Receipt } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
 
 interface Expense {
   id: string;
@@ -24,10 +27,7 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    categoryId: "",
-    amount: 0,
-    description: "",
-    date: new Date().toISOString().split("T")[0],
+    categoryId: "", amount: 0, description: "", date: new Date().toISOString().split("T")[0],
   });
 
   useEffect(() => { fetchData(); }, []);
@@ -57,9 +57,7 @@ export default function FinancePage() {
       setFormData({ categoryId: "", amount: 0, description: "", date: new Date().toISOString().split("T")[0] });
       fetchData();
       toast("Expense added", "success");
-    } catch (err: any) {
-      toast(err.response?.data?.message || "Failed", "error");
-    }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
@@ -68,58 +66,64 @@ export default function FinancePage() {
       await api.delete(`/finance/expenses/${id}`);
       fetchData();
       toast("Expense deleted", "success");
-    } catch (err) {
-      toast("Failed to delete", "error");
-    }
+    } catch (err) { toast("Failed to delete", "error"); }
   };
+
+  const expenseColumns = [
+    { key: "date", label: "Date", render: (v: string) => new Date(v).toLocaleDateString() },
+    { key: "category", label: "Category", render: (v: any) => v?.name },
+    { key: "description", label: "Description", render: (v: string) => v || "-" },
+    { key: "amount", label: "Amount", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)}>
+          <Receipt className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Finance</h2>
-          <p className="text-muted-foreground">Expenses, cash flow & profitability</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "Add Expense"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Finance"
+        description="Expenses, cash flow & profitability"
+        action={{ label: "Add Expense", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchData}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Expense</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Category *</label>
+        <FormCard title="New Expense" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Category" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} required>
                   <option value="">Select category</option>
                   {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Amount *</label>
+              </FormField>
+              <FormField label="Amount" required>
                 <Input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Date *</label>
+              </FormField>
+              <FormField label="Date" required>
                 <Input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Description</label>
+              </FormField>
+              <FormField label="Description">
                 <Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Save Expense</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Save Expense</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      {/* P&L Summary */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Revenue</CardTitle>
@@ -132,12 +136,12 @@ export default function FinancePage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">COGS</CardTitle>
+            <CardTitle className="text-sm font-medium">Expenses</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Rp {(profitLoss?.cogs || 0).toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Cost of goods sold</p>
+            <div className="text-2xl font-bold">Rp {(profitLoss?.operatingExpenses || 0).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Operating costs</p>
           </CardContent>
         </Card>
         <Card>
@@ -164,9 +168,8 @@ export default function FinancePage() {
             <p className="text-xs text-muted-foreground">{(profitLoss?.netMargin || 0).toFixed(1)}% margin</p>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
-      {/* Cash Flow */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader><CardTitle>Cash Flow</CardTitle></CardHeader>
@@ -209,39 +212,17 @@ export default function FinancePage() {
         </Card>
       </div>
 
-      {/* Recent Expenses */}
       <Card>
         <CardHeader><CardTitle>Recent Expenses</CardTitle></CardHeader>
         <CardContent>
-          {expenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No expenses recorded</p>
+          {loading ? (
+            <p className="text-center py-4">Loading...</p>
           ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Date</th>
-                  <th className="p-3 text-left font-medium">Category</th>
-                  <th className="p-3 text-left font-medium">Description</th>
-                  <th className="p-3 text-right font-medium">Amount</th>
-                  <th className="p-3 text-center font-medium">Action</th>
-                </tr></thead>
-                <tbody>
-                  {expenses.map((exp) => (
-                    <tr key={exp.id} className="border-b">
-                      <td className="p-3">{new Date(exp.date).toLocaleDateString()}</td>
-                      <td className="p-3">{exp.category?.name}</td>
-                      <td className="p-3 text-muted-foreground">{exp.description || "-"}</td>
-                      <td className="p-3 text-right font-medium">Rp {exp.amount.toLocaleString()}</td>
-                      <td className="p-3 text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(exp.id)}>
-                          <Receipt className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveTable
+              columns={expenseColumns}
+              data={expenses}
+              emptyMessage="No expenses recorded"
+            />
           )}
         </CardContent>
       </Card>

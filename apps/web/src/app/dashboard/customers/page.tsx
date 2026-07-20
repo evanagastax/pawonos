@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Users, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Customer {
   id: string;
@@ -27,10 +30,8 @@ export default function CustomersPage() {
   useEffect(() => { fetchCustomers(); }, []);
 
   const fetchCustomers = async () => {
-    try {
-      const res = await api.get("/customers", { params: { search } });
-      setCustomers(res.data.items || []);
-    } catch (err) { console.error(err); }
+    try { const res = await api.get("/customers", { params: { search } }); setCustomers(res.data.items || []); }
+    catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
@@ -41,110 +42,97 @@ export default function CustomersPage() {
       setShowForm(false);
       setFormData({ name: "", company: "", phone: "", email: "", address: "", notes: "" });
       fetchCustomers();
+      toast("Customer added", "success");
     } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete?")) return;
-    try { await api.delete(`/customers/${id}`); fetchCustomers(); }
+    try { await api.delete(`/customers/${id}`); fetchCustomers(); toast("Customer deleted", "success"); }
     catch { toast("Failed", "error"); }
   };
 
+  const columns = [
+    { key: "name", label: "Name", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "company", label: "Company", render: (v: string) => v || "-" },
+    { key: "phone", label: "Phone", render: (v: string) => v || "-" },
+    { key: "email", label: "Email", render: (v: string) => v || "-" },
+    { key: "_count", label: "Orders", align: "center" as const, render: (v: any) => v?.orders || 0 },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Customers</h2>
-          <p className="text-muted-foreground">Manage customer contacts</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "Add Customer"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Customers"
+        description="Manage customer contacts"
+        action={{ label: "Add Customer", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchCustomers}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Customer</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Name *</label>
+        <FormCard title="New Customer" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Name" required>
                 <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Company</label>
+              </FormField>
+              <FormField label="Company">
                 <Input value={formData.company} onChange={(e) => setFormData({ ...formData, company: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Phone</label>
+              </FormField>
+              <FormField label="Phone">
                 <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Email</label>
+              </FormField>
+              <FormField label="Email">
                 <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium">Address</label>
+              </FormField>
+              <FormField label="Address" className="md:col-span-2">
                 <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Save Customer</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Save Customer</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Button variant="outline" onClick={fetchCustomers}>Refresh</Button>
-          </div>
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{customers.length}</div></CardContent>
+        </Card>
+      </StatsGrid>
 
-          {loading ? <p className="text-center py-8">Loading...</p> : customers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Users className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">No customers found.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-medium">Name</th>
-                    <th className="p-4 text-left font-medium">Company</th>
-                    <th className="p-4 text-left font-medium">Phone</th>
-                    <th className="p-4 text-left font-medium">Email</th>
-                    <th className="p-4 text-center font-medium">Orders</th>
-                    <th className="p-4 text-center font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((c) => (
-                    <tr key={c.id} className="border-b">
-                      <td className="p-4 font-medium">{c.name}</td>
-                      <td className="p-4">{c.company || "-"}</td>
-                      <td className="p-4">{c.phone || "-"}</td>
-                      <td className="p-4">{c.email || "-"}</td>
-                      <td className="p-4 text-center">{c._count?.orders || 0}</td>
-                      <td className="p-4 text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </FilterBar>
+
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={customers}
+          emptyMessage="No customers found. Click 'Add Customer' to create your first customer."
+        />
+      )}
     </div>
   );
 }

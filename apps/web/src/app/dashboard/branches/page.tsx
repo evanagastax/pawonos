@@ -1,13 +1,15 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building, MapPin, Users, Package } from "lucide-react";
+import { Building, MapPin, Users } from "lucide-react";
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
 
 export default function BranchesPage() {
   return (
     <div className="space-y-6">
-      <div><h2 className="text-3xl font-bold tracking-tight">Branches</h2><p className="text-muted-foreground">Multi-branch management (coming soon)</p></div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <PageHeader title="Branches" description="Multi-branch management (coming soon)" />
+
+      <StatsGrid columns={3}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Main Kitchen</CardTitle>
@@ -20,7 +22,8 @@ export default function BranchesPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
+
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Building className="h-12 w-12 text-muted-foreground mb-4" />

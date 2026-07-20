@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, TrendingUp, Package, DollarSign, AlertTriangle } from "lucide-react";
+import { Brain, TrendingUp, Package, AlertTriangle } from "lucide-react";
 import api from "@/lib/api";
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 
 export default function ForecastPage() {
   const [demand, setDemand] = useState<any>(null);
@@ -33,10 +35,31 @@ export default function ForecastPage() {
     finally { setLoading(false); }
   };
 
+  const demandColumns = [
+    { key: "date", label: "Date" },
+    { key: "dayOfWeek", label: "Day" },
+    { key: "predictedOrders", label: "Predicted", align: "right" as const },
+    { key: "confidence", label: "Confidence", align: "right" as const, render: (v: number) => `${Math.round(v * 100)}%` },
+  ];
+
+  const ingredientColumns = [
+    { key: "name", label: "Ingredient" },
+    { key: "quantity", label: "Quantity", align: "right" as const, render: (v: number, row: any) => `${v} ${row.unit}` },
+    { key: "estimatedCost", label: "Est. Cost", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+  ];
+
+  const optimizationColumns = [
+    { key: "menuItem", label: "Menu Item", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "currentPrice", label: "Price", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    { key: "hpp", label: "HPP", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    { key: "margin", label: "Margin", align: "right" as const, render: (v: number) => <span className={v < 0 ? "text-destructive" : "text-yellow-600"}>{v}%</span> },
+    { key: "suggestion", label: "Suggestion" },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-3xl font-bold tracking-tight">AI Forecast</h2><p className="text-muted-foreground">Demand prediction & optimization</p></div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader title="AI Forecast" description="Demand prediction & optimization" />
         <div className="flex gap-2">
           {[7, 14, 30].map((d) => (
             <Button key={d} variant={days === d ? "default" : "outline"} size="sm" onClick={() => setDays(d)}>{d}d</Button>
@@ -44,7 +67,7 @@ export default function ForecastPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Predicted Orders</CardTitle>
@@ -85,91 +108,29 @@ export default function ForecastPage() {
             <p className="text-xs text-muted-foreground">Need optimization</p>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Demand Forecast */}
         <Card>
           <CardHeader><CardTitle>Demand Forecast</CardTitle></CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Date</th>
-                  <th className="p-3 text-left font-medium">Day</th>
-                  <th className="p-3 text-right font-medium">Predicted</th>
-                  <th className="p-3 text-right font-medium">Confidence</th>
-                </tr></thead>
-                <tbody>
-                  {demand?.forecast?.map((f: any, i: number) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-3">{f.date}</td>
-                      <td className="p-3">{f.dayOfWeek}</td>
-                      <td className="p-3 text-right font-medium">{f.predictedOrders}</td>
-                      <td className="p-3 text-right">{Math.round(f.confidence * 100)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveTable columns={demandColumns} data={demand?.forecast || []} emptyMessage="No data" />
           </CardContent>
         </Card>
 
-        {/* Ingredient Forecast */}
         <Card>
           <CardHeader><CardTitle>Ingredient Needs</CardTitle></CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Ingredient</th>
-                  <th className="p-3 text-right font-medium">Quantity</th>
-                  <th className="p-3 text-right font-medium">Est. Cost</th>
-                </tr></thead>
-                <tbody>
-                  {ingredients?.ingredients?.map((ing: any, i: number) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-3">{ing.name}</td>
-                      <td className="p-3 text-right">{ing.quantity} {ing.unit}</td>
-                      <td className="p-3 text-right">Rp {ing.estimatedCost.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveTable columns={ingredientColumns} data={ingredients?.ingredients || []} emptyMessage="No data" />
           </CardContent>
         </Card>
       </div>
 
-      {/* Menu Optimization */}
       {optimization.length > 0 && (
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" />Menu Optimization Suggestions</CardTitle></CardHeader>
           <CardContent>
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Menu Item</th>
-                  <th className="p-3 text-right font-medium">Price</th>
-                  <th className="p-3 text-right font-medium">HPP</th>
-                  <th className="p-3 text-right font-medium">Margin</th>
-                  <th className="p-3 text-left font-medium">Suggestion</th>
-                </tr></thead>
-                <tbody>
-                  {optimization.map((opt, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-3 font-medium">{opt.menuItem}</td>
-                      <td className="p-3 text-right">Rp {opt.currentPrice.toLocaleString()}</td>
-                      <td className="p-3 text-right">Rp {opt.hpp.toLocaleString()}</td>
-                      <td className={`p-3 text-right font-medium ${opt.margin < 0 ? "text-destructive" : "text-yellow-600"}`}>
-                        {opt.margin}%
-                      </td>
-                      <td className="p-3 text-sm">{opt.suggestion}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ResponsiveTable columns={optimizationColumns} data={optimization} emptyMessage="All items optimized" />
           </CardContent>
         </Card>
       )}

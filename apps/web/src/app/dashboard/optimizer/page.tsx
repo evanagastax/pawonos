@@ -7,30 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Target, TrendingDown, AlertTriangle, CheckCircle } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-
-interface Recipe {
-  id: string;
-  name: string;
-  versions: any[];
-}
-
-interface OptimizationResult {
-  withinBudget: boolean;
-  budget: number;
-  maxHpp: number;
-  currentHpp: number;
-  difference: number;
-  suggestions: any[];
-}
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
 
 export default function OptimizerPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipes, setRecipes] = useState<any[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState("");
   const [selectedVersion, setSelectedVersion] = useState("");
   const [versions, setVersions] = useState<any[]>([]);
   const [budget, setBudget] = useState(20000);
   const [targetMargin, setTargetMargin] = useState(0.25);
-  const [result, setResult] = useState<OptimizationResult | null>(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { fetchRecipes(); }, []);
@@ -70,36 +58,44 @@ export default function OptimizerPage() {
     finally { setLoading(false); }
   };
 
+  const suggestionColumns = [
+    { key: "type", label: "Type", render: (v: string) => <span className="px-2 py-1 rounded-full text-xs font-medium bg-muted">{v}</span> },
+    { key: "description", label: "Description" },
+    { key: "savings", label: "Savings", align: "right" as const, render: (v: number) => <span className="font-medium text-green-600">Rp {v?.toLocaleString()}</span> },
+    { key: "qualityImpact", label: "Quality", align: "center" as const, render: (v: string) => (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${v === "low" ? "bg-green-100 text-green-800" : v === "medium" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+        {v}
+      </span>
+    )},
+    { key: "confidence", label: "Confidence", align: "right" as const, render: (v: number) => `${Math.round(v * 100)}%` },
+  ];
+
   return (
     <div className="space-y-6">
-      <div><h2 className="text-3xl font-bold tracking-tight">Budget Optimizer</h2><p className="text-muted-foreground">Optimize recipes to meet budget targets</p></div>
+      <PageHeader title="Budget Optimizer" description="Optimize recipes to meet budget targets" />
 
       <Card>
         <CardHeader><CardTitle>Optimization Parameters</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            <div>
-              <label className="text-sm font-medium">Recipe *</label>
+            <FormField label="Recipe *">
               <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedRecipe} onChange={(e) => handleRecipeChange(e.target.value)}>
                 <option value="">Select recipe</option>
                 {recipes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Version *</label>
+            </FormField>
+            <FormField label="Version *">
               <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={selectedVersion} onChange={(e) => setSelectedVersion(e.target.value)}>
                 <option value="">Select version</option>
                 {versions.map((v: any) => <option key={v.id} value={v.id}>v{v.version} (HPP: Rp {v.totalCost?.toLocaleString()})</option>)}
               </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Customer Budget (Rp)</label>
+            </FormField>
+            <FormField label="Customer Budget (Rp)">
               <Input type="number" value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Target Margin (%)</label>
+            </FormField>
+            <FormField label="Target Margin (%)">
               <Input type="number" value={targetMargin * 100} onChange={(e) => setTargetMargin(Number(e.target.value) / 100)} />
-            </div>
+            </FormField>
           </div>
           <Button className="mt-4" onClick={handleOptimize} disabled={!selectedVersion || loading}>
             {loading ? "Analyzing..." : "Analyze"}
@@ -109,7 +105,7 @@ export default function OptimizerPage() {
 
       {result && (
         <>
-          <div className="grid gap-4 md:grid-cols-4">
+          <StatsGrid>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Budget</CardTitle>
@@ -143,38 +139,13 @@ export default function OptimizerPage() {
                 {!result.withinBudget && <p className="text-sm text-muted-foreground">Need to save Rp {result.difference?.toLocaleString()}</p>}
               </CardContent>
             </Card>
-          </div>
+          </StatsGrid>
 
           {result.suggestions?.length > 0 && (
             <Card>
               <CardHeader><CardTitle>Optimization Suggestions</CardTitle></CardHeader>
               <CardContent>
-                <div className="rounded-md border">
-                  <table className="w-full">
-                    <thead><tr className="border-b bg-muted/50">
-                      <th className="p-3 text-left font-medium">Type</th>
-                      <th className="p-3 text-left font-medium">Description</th>
-                      <th className="p-3 text-right font-medium">Savings</th>
-                      <th className="p-3 text-center font-medium">Quality Impact</th>
-                      <th className="p-3 text-center font-medium">Confidence</th>
-                    </tr></thead>
-                    <tbody>
-                      {result.suggestions.map((s: any, i: number) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-3"><span className="px-2 py-1 rounded-full text-xs font-medium bg-muted">{s.type}</span></td>
-                          <td className="p-3">{s.description}</td>
-                          <td className="p-3 text-right font-medium text-green-600">Rp {s.savings?.toLocaleString()}</td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${s.qualityImpact === "low" ? "bg-green-100 text-green-800" : s.qualityImpact === "medium" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
-                              {s.qualityImpact}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">{Math.round(s.confidence * 100)}%</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ResponsiveTable columns={suggestionColumns} data={result.suggestions} emptyMessage="No suggestions" />
                 <div className="mt-4 p-4 bg-muted rounded-lg">
                   <p className="text-sm font-medium">Total Potential Savings: <span className="text-green-600">Rp {result.suggestions.reduce((sum: number, s: any) => sum + (s.savings || 0), 0).toLocaleString()}</span></p>
                 </div>

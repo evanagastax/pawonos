@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BarChart3, TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart, Users } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, DollarSign, Package, ShoppingCart } from "lucide-react";
 import api from "@/lib/api";
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 
 export default function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
@@ -35,10 +37,17 @@ export default function AnalyticsPage() {
 
   if (loading) return <div className="flex items-center justify-center py-12">Loading...</div>;
 
+  const trendColumns = [
+    { key: "month", label: "Month", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "revenue", label: "Revenue", align: "right" as const, render: (v: number) => <span className="text-green-600">Rp {v?.toLocaleString()}</span> },
+    { key: "expenses", label: "Expenses", align: "right" as const, render: (v: number) => <span className="text-destructive">Rp {v?.toLocaleString()}</span> },
+    { key: "profit", label: "Profit", align: "right" as const, render: (v: number) => <span className={v >= 0 ? "text-green-600" : "text-destructive"}>Rp {v?.toLocaleString()}</span> },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-3xl font-bold tracking-tight">Analytics</h2><p className="text-muted-foreground">Business insights & reports</p></div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageHeader title="Analytics" description="Business insights & reports" />
         <div className="flex gap-2">
           {["week", "month", "year"].map((p) => (
             <Button key={p} variant={period === p ? "default" : "outline"} size="sm" onClick={() => setPeriod(p)}>
@@ -48,8 +57,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Orders</CardTitle>
@@ -90,10 +98,9 @@ export default function AnalyticsPage() {
             <p className="text-xs text-muted-foreground">Batches</p>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Top Menu Items */}
         <Card>
           <CardHeader><CardTitle>Top Selling Items</CardTitle></CardHeader>
           <CardContent>
@@ -118,7 +125,6 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
-        {/* Ingredient Usage */}
         <Card>
           <CardHeader><CardTitle>Top Ingredient Usage (30d)</CardTitle></CardHeader>
           <CardContent>
@@ -144,40 +150,17 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      {/* Profit Trend */}
       <Card>
         <CardHeader><CardTitle>Profit Trend (6 months)</CardTitle></CardHeader>
         <CardContent>
-          {profitTrend.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">No data</p>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Month</th>
-                  <th className="p-3 text-right font-medium">Revenue</th>
-                  <th className="p-3 text-right font-medium">Expenses</th>
-                  <th className="p-3 text-right font-medium">Profit</th>
-                </tr></thead>
-                <tbody>
-                  {profitTrend.map((item, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="p-3 font-medium">{item.month}</td>
-                      <td className="p-3 text-right text-green-600">Rp {item.revenue.toLocaleString()}</td>
-                      <td className="p-3 text-right text-destructive">Rp {item.expenses.toLocaleString()}</td>
-                      <td className={`p-3 text-right font-medium ${item.profit >= 0 ? "text-green-600" : "text-destructive"}`}>
-                        Rp {item.profit.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ResponsiveTable
+            columns={trendColumns}
+            data={profitTrend}
+            emptyMessage="No data"
+          />
         </CardContent>
       </Card>
 
-      {/* Order Status Breakdown */}
       <Card>
         <CardHeader><CardTitle>Order Status Breakdown</CardTitle></CardHeader>
         <CardContent>

@@ -4,9 +4,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Package, Edit, Trash2, X } from "lucide-react";
+import { Plus, Search, Package, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
 
 interface Ingredient {
   id: string;
@@ -25,49 +28,29 @@ export default function IngredientsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    sku: "",
-    categoryId: "",
-    unitId: "",
-    purchasePrice: 0,
-    minimumStock: 0,
+    name: "", sku: "", categoryId: "", unitId: "", purchasePrice: 0, minimumStock: 0,
   });
   const [categories, setCategories] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchIngredients();
-    fetchCategories();
-    fetchUnits();
-  }, []);
+  useEffect(() => { fetchIngredients(); fetchCategories(); fetchUnits(); }, []);
 
   const fetchIngredients = async () => {
     try {
       const res = await api.get("/ingredients", { params: { search } });
       setIngredients(res.data.items || []);
-    } catch (err) {
-      console.error("Failed to fetch ingredients", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   const fetchCategories = async () => {
-    try {
-      const res = await api.get("/ingredients/categories");
-      setCategories(res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch categories", err);
-    }
+    try { const res = await api.get("/ingredients/categories"); setCategories(res.data || []); }
+    catch (err) { console.error(err); }
   };
 
   const fetchUnits = async () => {
-    try {
-      const res = await api.get("/ingredients/units");
-      setUnits(res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch units", err);
-    }
+    try { const res = await api.get("/ingredients/units"); setUnits(res.data || []); }
+    catch (err) { console.error(err); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,9 +61,7 @@ export default function IngredientsPage() {
       setFormData({ name: "", sku: "", categoryId: "", unitId: "", purchasePrice: 0, minimumStock: 0 });
       fetchIngredients();
       toast("Ingredient created", "success");
-    } catch (err: any) {
-      toast(err.response?.data?.message || "Failed to create ingredient", "error");
-    }
+    } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
@@ -89,72 +70,75 @@ export default function IngredientsPage() {
       await api.delete(`/ingredients/${id}`);
       fetchIngredients();
       toast("Ingredient deleted", "success");
-    } catch (err) {
-      toast("Failed to delete ingredient", "error");
-    }
+    } catch (err) { toast("Failed to delete ingredient", "error"); }
   };
 
-  const filtered = ingredients.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const columns = [
+    { key: "name", label: "Name", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "sku", label: "SKU", render: (v: string) => v || "-" },
+    { key: "category", label: "Category", render: (v: any) => v?.name },
+    { key: "unit", label: "Unit", render: (v: any) => v?.symbol },
+    { key: "purchasePrice", label: "Price", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    { key: "inventory", label: "Stock", align: "right" as const, render: (v: any) => v?.currentStock || 0 },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Ingredients</h2>
-          <p className="text-muted-foreground">Manage your ingredient master data</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "Add Ingredient"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Ingredients"
+        description="Manage your ingredient master data"
+        action={{ label: "Add Ingredient", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchIngredients}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Ingredient</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Name *</label>
+        <FormCard title="New Ingredient" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Name" required>
                 <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">SKU</label>
+              </FormField>
+              <FormField label="SKU">
                 <Input value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Category *</label>
+              </FormField>
+              <FormField label="Category" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.categoryId} onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })} required>
                   <option value="">Select category</option>
                   {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Unit *</label>
+              </FormField>
+              <FormField label="Unit" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.unitId} onChange={(e) => setFormData({ ...formData, unitId: e.target.value })} required>
                   <option value="">Select unit</option>
                   {units.map((u: any) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Purchase Price</label>
+              </FormField>
+              <FormField label="Purchase Price">
                 <Input type="number" value={formData.purchasePrice} onChange={(e) => setFormData({ ...formData, purchasePrice: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Minimum Stock</label>
+              </FormField>
+              <FormField label="Minimum Stock">
                 <Input type="number" value={formData.minimumStock} onChange={(e) => setFormData({ ...formData, minimumStock: Number(e.target.value) })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Save Ingredient</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Save Ingredient</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Ingredients</CardTitle>
@@ -162,65 +146,24 @@ export default function IngredientsPage() {
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{ingredients.length}</div></CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search ingredients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Button variant="outline" onClick={fetchIngredients}>Refresh</Button>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search ingredients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </FilterBar>
 
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <p className="text-center py-8">Loading...</p>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <Package className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-sm text-muted-foreground">No ingredients found.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-4 text-left font-medium">Name</th>
-                    <th className="p-4 text-left font-medium">SKU</th>
-                    <th className="p-4 text-left font-medium">Category</th>
-                    <th className="p-4 text-left font-medium">Unit</th>
-                    <th className="p-4 text-right font-medium">Price</th>
-                    <th className="p-4 text-right font-medium">Stock</th>
-                    <th className="p-4 text-center font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="p-4 font-medium">{item.name}</td>
-                      <td className="p-4 text-muted-foreground">{item.sku || "-"}</td>
-                      <td className="p-4">{item.category?.name}</td>
-                      <td className="p-4">{item.unit?.symbol}</td>
-                      <td className="p-4 text-right">Rp {item.purchasePrice?.toLocaleString()}</td>
-                      <td className="p-4 text-right">{item.inventory?.currentStock || 0}</td>
-                      <td className="p-4 text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={ingredients}
+          emptyMessage="No ingredients found. Click 'Add Ingredient' to create your first ingredient."
+        />
+      )}
     </div>
   );
 }

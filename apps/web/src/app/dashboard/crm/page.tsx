@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Users, TrendingUp, AlertTriangle, Star } from "lucide-react";
 import api from "@/lib/api";
+import { PageHeader, StatsGrid } from "@/components/ui/page-header";
 
 export default function CrmPage() {
   const [topCustomers, setTopCustomers] = useState<any[]>([]);
@@ -31,10 +31,9 @@ export default function CrmPage() {
 
   return (
     <div className="space-y-6">
-      <div><h2 className="text-3xl font-bold tracking-tight">CRM</h2><p className="text-muted-foreground">Customer relationship management</p></div>
+      <PageHeader title="CRM" description="Customer relationship management" onRefresh={fetchData} />
 
-      {/* Segmentation */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <StatsGrid>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">VIP Customers</CardTitle>
@@ -75,14 +74,13 @@ export default function CrmPage() {
             <p className="text-xs text-muted-foreground">1-2 orders</p>
           </CardContent>
         </Card>
-      </div>
+      </StatsGrid>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Top Customers */}
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500" />Top Customers</CardTitle></CardHeader>
           <CardContent>
-            {topCustomers.length === 0 ? (
+            {loading ? <p className="text-center py-4">Loading...</p> : topCustomers.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4">No data</p>
             ) : (
               <div className="space-y-3">
@@ -106,11 +104,10 @@ export default function CrmPage() {
           </CardContent>
         </Card>
 
-        {/* Inactive Customers */}
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-yellow-500" />Inactive Customers (30d)</CardTitle></CardHeader>
           <CardContent>
-            {inactiveCustomers.length === 0 ? (
+            {loading ? <p className="text-center py-4">Loading...</p> : inactiveCustomers.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4">All customers active</p>
             ) : (
               <div className="space-y-3">

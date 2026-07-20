@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, ShoppingCart, Trash2, X, Clock, CheckCircle, Truck } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
+import { FormCard, FormGrid, FormField, FormActions } from "@/components/ui/form-layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Order {
   id: string;
@@ -68,18 +71,19 @@ export default function OrdersPage() {
       await api.post("/orders", formData);
       setShowForm(false);
       fetchOrders();
+      toast("Order created", "success");
     } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleStatus = async (id: string, status: string) => {
-    try { await api.put(`/orders/${id}/status`, { status }); fetchOrders(); }
+    try { await api.put(`/orders/${id}/status`, { status }); fetchOrders(); toast(`Order ${status}`, "success"); }
     catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete?")) return;
-    try { await api.delete(`/orders/${id}`); fetchOrders(); }
-    catch { toast("Failed", "error"); }
+    if (!confirm("Delete order?")) return;
+    try { await api.delete(`/orders/${id}`); fetchOrders(); toast("Order deleted", "success"); }
+    catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const todayOrders = orders.filter(o => new Date(o.deliveryDate).toDateString() === new Date().toDateString());
@@ -87,121 +91,135 @@ export default function OrdersPage() {
   const inProduction = orders.filter(o => ["PREPARING", "COOKING", "PACKAGING"].includes(o.status));
   const delivered = orders.filter(o => ["DELIVERED", "COMPLETED"].includes(o.status));
 
+  const columns = [
+    { key: "orderNumber", label: "Order #", render: (v: string) => <span className="font-medium">{v}</span> },
+    { key: "customer", label: "Customer", render: (v: any) => v?.name },
+    { key: "mealTemplate", label: "Template", render: (v: any) => v?.name },
+    { key: "quantity", label: "Qty", align: "right" as const },
+    { key: "sellingPrice", label: "Price", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    { key: "deliveryDate", label: "Delivery", render: (v: string) => new Date(v).toLocaleDateString() },
+    {
+      key: "status",
+      label: "Status",
+      align: "center" as const,
+      render: (v: string) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[v] || ""}`}>{v}</span>
+      ),
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        <div className="flex gap-1 justify-center">
+          {row.status === "DRAFT" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "CONFIRMED")}>Confirm</Button>}
+          {row.status === "CONFIRMED" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "PREPARING")}>Prepare</Button>}
+          {row.status === "READY" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "DELIVERING")}>Deliver</Button>}
+          {row.status === "DELIVERING" && <Button size="sm" variant="outline" onClick={() => handleStatus(row.id, "COMPLETED")}>Complete</Button>}
+          <Button variant="ghost" size="icon" onClick={() => handleDelete(row.id)}>
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Orders</h2>
-          <p className="text-muted-foreground">Manage catering orders</p>
-        </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          {showForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-          {showForm ? "Cancel" : "New Order"}
-        </Button>
-      </div>
+      <PageHeader
+        title="Orders"
+        description="Manage catering orders"
+        action={{ label: "New Order", onClick: () => setShowForm(!showForm) }}
+        showForm={showForm}
+        onRefresh={fetchOrders}
+      />
 
       {showForm && (
-        <Card>
-          <CardHeader><CardTitle>New Order</CardTitle></CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium">Customer *</label>
+        <FormCard title="New Order" onClose={() => setShowForm(false)}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormGrid columns={2}>
+              <FormField label="Customer" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} required>
                   <option value="">Select customer</option>
                   {customers.map((c: any) => <option key={c.id} value={c.id}>{c.name}{c.company ? ` (${c.company})` : ''}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Meal Template *</label>
+              </FormField>
+              <FormField label="Meal Template" required>
                 <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={formData.mealTemplateId} onChange={(e) => setFormData({ ...formData, mealTemplateId: e.target.value })} required>
                   <option value="">Select template</option>
                   {templates.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Quantity *</label>
+              </FormField>
+              <FormField label="Quantity" required>
                 <Input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: Number(e.target.value) })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Delivery Date *</label>
+              </FormField>
+              <FormField label="Delivery Date" required>
                 <Input type="date" value={formData.deliveryDate} onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Selling Price/Meal *</label>
+              </FormField>
+              <FormField label="Selling Price/Meal" required>
                 <Input type="number" value={formData.sellingPrice} onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })} required />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Delivery Time</label>
+              </FormField>
+              <FormField label="Delivery Time">
                 <Input value={formData.deliveryTime} onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })} placeholder="11:00" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium">Delivery Address</label>
+              </FormField>
+              <FormField label="Delivery Address" className="md:col-span-2">
                 <Input value={formData.deliveryAddress} onChange={(e) => setFormData({ ...formData, deliveryAddress: e.target.value })} />
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Create Order</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              </FormField>
+            </FormGrid>
+            <FormActions>
+              <Button type="submit">Create Order</Button>
+            </FormActions>
+          </form>
+        </FormCard>
       )}
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Today</CardTitle><ShoppingCart className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{todayOrders.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Pending</CardTitle><Clock className="h-4 w-4 text-yellow-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{pending.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">In Production</CardTitle><CheckCircle className="h-4 w-4 text-blue-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{inProduction.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Delivered</CardTitle><Truck className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{delivered.length}</div></CardContent></Card>
-      </div>
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{todayOrders.length}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{pending.length}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">In Production</CardTitle>
+            <CheckCircle className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{inProduction.length}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Delivered</CardTitle>
+            <Truck className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{delivered.length}</div></CardContent>
+        </Card>
+      </StatsGrid>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input placeholder="Search orders..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" /></div>
-            <Button variant="outline" onClick={fetchOrders}>Refresh</Button>
-          </div>
-          {loading ? <p className="text-center py-8">Loading...</p> : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8"><ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No orders found.</p></div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-4 text-left font-medium">Order #</th>
-                  <th className="p-4 text-left font-medium">Customer</th>
-                  <th className="p-4 text-left font-medium">Template</th>
-                  <th className="p-4 text-right font-medium">Qty</th>
-                  <th className="p-4 text-right font-medium">Price</th>
-                  <th className="p-4 text-left font-medium">Delivery</th>
-                  <th className="p-4 text-center font-medium">Status</th>
-                  <th className="p-4 text-center font-medium">Actions</th>
-                </tr></thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id} className="border-b">
-                      <td className="p-4 font-medium">{o.orderNumber}</td>
-                      <td className="p-4">{o.customer?.name}</td>
-                      <td className="p-4">{o.mealTemplate?.name}</td>
-                      <td className="p-4 text-right">{o.quantity}</td>
-                      <td className="p-4 text-right">Rp {o.sellingPrice?.toLocaleString()}</td>
-                      <td className="p-4">{new Date(o.deliveryDate).toLocaleDateString()}</td>
-                      <td className="p-4 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[o.status] || ''}`}>{o.status}</span></td>
-                      <td className="p-4 text-center">
-                        <div className="flex gap-1 justify-center">
-                          {o.status === "DRAFT" && <Button size="sm" variant="outline" onClick={() => handleStatus(o.id, "CONFIRMED")}>Confirm</Button>}
-                          {o.status === "CONFIRMED" && <Button size="sm" variant="outline" onClick={() => handleStatus(o.id, "PREPARING")}>Prepare</Button>}
-                          {o.status === "READY" && <Button size="sm" variant="outline" onClick={() => handleStatus(o.id, "DELIVERING")}>Deliver</Button>}
-                          {o.status === "DELIVERING" && <Button size="sm" variant="outline" onClick={() => handleStatus(o.id, "COMPLETED")}>Complete</Button>}
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(o.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search orders..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+      </FilterBar>
+
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={orders}
+          emptyMessage="No orders found. Click 'New Order' to create your first order."
+        />
+      )}
     </div>
   );
 }

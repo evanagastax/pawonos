@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Search, Warehouse, AlertTriangle, Package } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader, StatsGrid, FilterBar } from "@/components/ui/page-header";
+import { ResponsiveTable } from "@/components/ui/responsive-table";
 
 interface InventoryItem {
   id: string;
@@ -40,90 +42,100 @@ export default function InventoryPage() {
       setShowPurchase(null);
       setPurchaseData({ quantity: 0, unitCost: 0 });
       fetchInventory();
+      toast("Purchase recorded", "success");
     } catch (err: any) { toast(err.response?.data?.message || "Failed", "error"); }
   };
 
   const lowStock = items.filter(i => {
-    const name = i.ingredient?.name || i.packaging?.name;
     const minStock = i.ingredient?.minimumStock || i.packaging?.minimumStock || 0;
     return i.currentStock <= minStock;
   });
 
   const totalValue = items.reduce((sum, i) => sum + i.currentStock * i.averageCost, 0);
 
+  const columns = [
+    { key: "name", label: "Name", render: (_: any, row: any) => <span className="font-medium">{row.ingredient?.name || row.packaging?.name}</span> },
+    { key: "type", label: "Type", render: (_: any, row: any) => row.ingredient ? "Ingredient" : "Packaging" },
+    { key: "unit", label: "Unit", render: (_: any, row: any) => row.ingredient?.unit?.symbol || row.packaging?.unit?.symbol },
+    { key: "currentStock", label: "Stock", align: "right" as const },
+    { key: "reservedStock", label: "Reserved", align: "right" as const },
+    { key: "averageCost", label: "Avg Cost", align: "right" as const, render: (v: number) => `Rp ${v?.toLocaleString()}` },
+    {
+      key: "status",
+      label: "Status",
+      align: "center" as const,
+      render: (_: any, row: any) => {
+        const minStock = row.ingredient?.minimumStock || row.packaging?.minimumStock || 0;
+        const isLow = row.currentStock <= minStock;
+        return isLow
+          ? <span className="text-destructive text-xs font-medium">LOW</span>
+          : <span className="text-green-600 text-xs font-medium">OK</span>;
+      },
+    },
+    {
+      key: "actions",
+      label: "",
+      align: "center" as const,
+      render: (_: any, row: any) => (
+        showPurchase === row.id ? (
+          <div className="flex gap-1">
+            <Input type="number" className="w-20" placeholder="Qty" value={purchaseData.quantity} onChange={(e) => setPurchaseData({ ...purchaseData, quantity: Number(e.target.value) })} />
+            <Input type="number" className="w-24" placeholder="Cost" value={purchaseData.unitCost} onChange={(e) => setPurchaseData({ ...purchaseData, unitCost: Number(e.target.value) })} />
+            <Button size="sm" onClick={() => handlePurchase(row.id)}>OK</Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowPurchase(null)}>X</Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setShowPurchase(row.id)}>Purchase</Button>
+        )
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div><h2 className="text-3xl font-bold tracking-tight">Inventory</h2><p className="text-muted-foreground">Stock management</p></div>
+      <PageHeader title="Inventory" description="Stock management" onRefresh={fetchInventory} />
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Items</CardTitle><Warehouse className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{items.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Low Stock</CardTitle><AlertTriangle className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{lowStock.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Value</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">Rp {totalValue.toLocaleString()}</div></CardContent></Card>
-      </div>
+      <StatsGrid>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <Warehouse className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{items.length}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold text-destructive">{lowStock.length}</div></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">Rp {totalValue.toLocaleString()}</div></CardContent>
+        </Card>
+      </StatsGrid>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-4">
-            <select className="rounded-md border border-input bg-background px-3 py-2 text-sm" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">All</option>
-              <option value="ingredient">Ingredients</option>
-              <option value="packaging">Packaging</option>
-            </select>
-            <Button variant="outline" onClick={fetchInventory}>Refresh</Button>
-          </div>
-          {loading ? <p className="text-center py-8">Loading...</p> : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8"><Warehouse className="h-12 w-12 text-muted-foreground mb-4" /><p className="text-sm text-muted-foreground">No inventory items.</p></div>
-          ) : (
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead><tr className="border-b bg-muted/50">
-                  <th className="p-4 text-left font-medium">Name</th>
-                  <th className="p-4 text-left font-medium">Type</th>
-                  <th className="p-4 text-left font-medium">Unit</th>
-                  <th className="p-4 text-right font-medium">Stock</th>
-                  <th className="p-4 text-right font-medium">Reserved</th>
-                  <th className="p-4 text-right font-medium">Avg Cost</th>
-                  <th className="p-4 text-right font-medium">Value</th>
-                  <th className="p-4 text-center font-medium">Status</th>
-                  <th className="p-4 text-center font-medium">Action</th>
-                </tr></thead>
-                <tbody>
-                  {items.map((item) => {
-                    const name = item.ingredient?.name || item.packaging?.name || "Unknown";
-                    const unit = item.ingredient?.unit?.symbol || item.packaging?.unit?.symbol || "";
-                    const minStock = item.ingredient?.minimumStock || item.packaging?.minimumStock || 0;
-                    const isLow = item.currentStock <= minStock;
-                    return (
-                      <tr key={item.id} className="border-b">
-                        <td className="p-4 font-medium">{name}</td>
-                        <td className="p-4">{item.ingredient ? "Ingredient" : "Packaging"}</td>
-                        <td className="p-4">{unit}</td>
-                        <td className="p-4 text-right">{item.currentStock}</td>
-                        <td className="p-4 text-right">{item.reservedStock}</td>
-                        <td className="p-4 text-right">Rp {item.averageCost?.toLocaleString()}</td>
-                        <td className="p-4 text-right">Rp {(item.currentStock * item.averageCost).toLocaleString()}</td>
-                        <td className="p-4 text-center">{isLow ? <span className="text-destructive text-xs font-medium">LOW</span> : <span className="text-green-600 text-xs font-medium">OK</span>}</td>
-                        <td className="p-4 text-center">
-                          {showPurchase === item.id ? (
-                            <div className="flex gap-1">
-                              <Input type="number" className="w-20" placeholder="Qty" value={purchaseData.quantity} onChange={(e) => setPurchaseData({ ...purchaseData, quantity: Number(e.target.value) })} />
-                              <Input type="number" className="w-24" placeholder="Cost" value={purchaseData.unitCost} onChange={(e) => setPurchaseData({ ...purchaseData, unitCost: Number(e.target.value) })} />
-                              <Button size="sm" onClick={() => handlePurchase(item.id)}>OK</Button>
-                              <Button size="sm" variant="ghost" onClick={() => setShowPurchase(null)}>X</Button>
-                            </div>
-                          ) : (
-                            <Button size="sm" variant="outline" onClick={() => setShowPurchase(item.id)}>Purchase</Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FilterBar>
+        <select className="rounded-md border border-input bg-background px-3 py-2 text-sm" value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="">All</option>
+          <option value="ingredient">Ingredients</option>
+          <option value="packaging">Packaging</option>
+        </select>
+      </FilterBar>
+
+      {loading ? (
+        <p className="text-center py-8">Loading...</p>
+      ) : (
+        <ResponsiveTable
+          columns={columns}
+          data={items}
+          emptyMessage="No inventory items found."
+        />
+      )}
     </div>
   );
 }
