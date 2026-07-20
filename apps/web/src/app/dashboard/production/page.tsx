@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Factory, Clock, CheckCircle, AlertCircle, Plus } from "lucide-react";
-import api from "@/lib/api";`nimport { toast } from "@/hooks/use-toast";
+import api from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 interface Batch {
   id: string;
