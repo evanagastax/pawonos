@@ -19,6 +19,10 @@ import {
   Target,
   FileText,
   BarChart3,
+  Brain,
+  CreditCard,
+  UserCheck,
+  Building,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -119,6 +123,26 @@ const navigation = [
     name: "Analytics",
     href: "/dashboard/analytics",
     icon: BarChart3,
+  },
+  {
+    name: "AI Forecast",
+    href: "/dashboard/forecast",
+    icon: Brain,
+  },
+  {
+    name: "POS",
+    href: "/dashboard/pos",
+    icon: CreditCard,
+  },
+  {
+    name: "CRM",
+    href: "/dashboard/crm",
+    icon: UserCheck,
+  },
+  {
+    name: "Branches",
+    href: "/dashboard/branches",
+    icon: Building,
   },
 ];
 

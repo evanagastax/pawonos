@@ -21,6 +21,10 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { EmployeesModule } from "./modules/employees/employees.module";
 import { PayrollModule } from "./modules/payroll/payroll.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { ForecastModule } from "./modules/forecast/forecast.module";
+import { BranchesModule } from "./modules/branches/branches.module";
+import { PosModule } from "./modules/pos/pos.module";
+import { CrmModule } from "./modules/crm/crm.module";
 
 @Module({
   imports: [
@@ -55,6 +59,10 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
     EmployeesModule,
     PayrollModule,
     AnalyticsModule,
+    ForecastModule,
+    BranchesModule,
+    PosModule,
+    CrmModule,
   ],
 })
 export class AppModule {}
