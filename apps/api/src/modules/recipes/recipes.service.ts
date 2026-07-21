@@ -135,12 +135,8 @@ export class RecipesService {
   async remove(id: string) {
     const recipe = await this.findOne(id);
 
-    // Check if recipe has menu items
-    if (recipe.menuItems.length > 0) {
-      throw new BadRequestException("Cannot delete recipe with menu items");
-    }
-
-    // Cascade delete: versions -> items/steps -> recipe
+    // Cascade delete: menu items -> versions -> items/steps -> recipe
+    await this.prisma.menuItem.deleteMany({ where: { recipeId: id } });
     for (const version of recipe.versions) {
       await this.prisma.recipeItem.deleteMany({ where: { recipeVersionId: version.id } });
       await this.prisma.recipeStep.deleteMany({ where: { recipeVersionId: version.id } });
